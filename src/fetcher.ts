@@ -1,3 +1,5 @@
+import { requestUrl } from "obsidian";
+
 export async function fetchCharacter(
   characterId: string,
   cobaltToken?: string
@@ -8,17 +10,15 @@ export async function fetchCharacter(
     "Accept": "application/json",
   };
 
-  // If the character is private, include the auth cookie
   if (cobaltToken) {
     headers["Cookie"] = `CobaltSession=${cobaltToken}`;
   }
 
-  const response = await fetch(url, { headers });
+  const response = await requestUrl({ url, headers });
 
-  if (!response.ok) {
+  if (response.status !== 200) {
     throw new Error(`DnD Beyond fetch failed: ${response.status}`);
   }
 
-  const json = await response.json();
-  return json.data; // the actual character object is nested under .data
+  return response.json.data;
 }
