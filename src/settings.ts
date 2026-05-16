@@ -1,36 +1,11 @@
-import {App, PluginSettingTab, Setting} from "obsidian";
-import MyPlugin from "./main";
-
-export interface MyPluginSettings {
-	mySetting: string;
+export interface DdbSyncSettings {
+  characterId: string;
+  targetNotePath: string;   // e.g. "DnD/My Character.md"
+  cobaltToken: string;      // optional: DnDB auth token for private chars
 }
 
-export const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
-}
-
-export class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
-
-	constructor(app: App, plugin: MyPlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
-
-	display(): void {
-		const {containerEl} = this;
-
-		containerEl.empty();
-
-		new Setting(containerEl)
-			.setName('Settings #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
-	}
-}
+export const DEFAULT_SETTINGS: DdbSyncSettings = {
+  characterId: "160003787",
+  targetNotePath: "DnD/Character Sheet.md",
+  cobaltToken: "eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..vbVD_jU6MrS93Hsf2gJYAg.RY6WRGYkf_qVc5HWj5kgLd6cIqObyf74tgURgfTVgg2DiSD02LFVybSYlNYH8Mem.TTwq5heUcUAqblYMTfeKEQ",
+};

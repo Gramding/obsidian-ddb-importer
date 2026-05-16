@@ -1,99 +1,110 @@
-import {App, Editor, MarkdownView, Modal, Notice, Plugin} from 'obsidian';
-import {DEFAULT_SETTINGS, MyPluginSettings, SampleSettingTab} from "./settings";
+import { App, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { DdbSyncSettings, DEFAULT_SETTINGS } from "./settings";
+import { fetchCharacter } from "./fetcher";
+import { parseCharacter } from "./parser";
+import { renderNote } from "./renderer";
 
-// Remember to rename these classes and interfaces!
+export default class DdbSyncPlugin extends Plugin {
+  settings: DdbSyncSettings;
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+  async onload() {
+    await this.loadSettings();
 
-	async onload() {
-		await this.loadSettings();
+    // Ribbon button
+    this.addRibbonIcon("dice", "Sync D&D Beyond", () => this.syncCharacter());
 
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
+    // Command palette
+    this.addCommand({
+      id: "sync-ddb-character",
+      name: "Sync character from D&D Beyond",
+      callback: () => this.syncCharacter(),
+    });
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
+    this.addSettingTab(new DdbSettingTab(this.app, this));
+  }
 
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				editor.replaceSelection('Sample editor command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
+  async syncCharacter() {
+    if (!this.settings.characterId) {
+      new Notice("D&D Beyond Sync: No character ID set in settings.");
+      return;
+    }
 
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-				return false;
-			}
-		});
+    try {
+      new Notice("Fetching character from D&D Beyond…");
+      const data = await fetchCharacter(
+        this.settings.characterId,
+        this.settings.cobaltToken || undefined
+      );
+      const stats = parseCharacter(data);
+      const content = renderNote(stats);
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+      const path = this.settings.targetNotePath;
+      const existing = this.app.vault.getAbstractFileByPath(path);
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			new Notice("Click");
-		});
+      if (existing) {
+        await this.app.vault.modify(existing as any, content);
+      } else {
+        await this.app.vault.create(path, content);
+      }
 
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+      new Notice(`✅ ${stats.name} synced!`);
+    } catch (e) {
+      console.error(e);
+      new Notice(`❌ Sync failed: ${e.message}`);
+    }
+  }
 
-	}
+  async loadSettings() {
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+  }
 
-	onunload() {
-	}
-
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<MyPluginSettings>);
-	}
-
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
+  async saveSettings() {
+    await this.saveData(this.settings);
+  }
 }
 
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
+class DdbSettingTab extends PluginSettingTab {
+  plugin: DdbSyncPlugin;
+  constructor(app: App, plugin: DdbSyncPlugin) {
+    super(app, plugin);
+    this.plugin = plugin;
+  }
 
-	onOpen() {
-		let {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
+  display() {
+    const { containerEl } = this;
+    containerEl.empty();
 
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
-	}
+    new Setting(containerEl)
+      .setName("Character ID")
+      .setDesc("The number at the end of your DnD Beyond character URL.")
+      .addText(t => t
+        .setPlaceholder("e.g. 12345678")
+        .setValue(this.plugin.settings.characterId)
+        .onChange(async v => {
+          this.plugin.settings.characterId = v.trim();
+          await this.plugin.saveSettings();
+        }));
+
+    new Setting(containerEl)
+      .setName("Target note path")
+      .setDesc("Where to write the character sheet in your vault.")
+      .addText(t => t
+        .setPlaceholder("DnD/Character Sheet.md")
+        .setValue(this.plugin.settings.targetNotePath)
+        .onChange(async v => {
+          this.plugin.settings.targetNotePath = v.trim();
+          await this.plugin.saveSettings();
+        }));
+
+    new Setting(containerEl)
+      .setName("CobaltSession token (optional)")
+      .setDesc("Only needed for private characters. Get it from your browser cookies on dndbeyond.com.")
+      .addText(t => t
+        .setPlaceholder("paste token here")
+        .setValue(this.plugin.settings.cobaltToken)
+        .onChange(async v => {
+          this.plugin.settings.cobaltToken = v.trim();
+          await this.plugin.saveSettings();
+        }));
+  }
 }
