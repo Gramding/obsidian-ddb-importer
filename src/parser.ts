@@ -6,6 +6,12 @@ export interface ConsumableItem {
 }
 
 export interface CharacterStats {
+// Add to CharacterStats interface
+passives: {
+  perception: number;
+  investigation: number;
+  insight: number;
+};
   name: string;
   race: string;
   classes: string;
@@ -258,23 +264,56 @@ export function parseCharacter(data: any): CharacterStats {
   const level = (data.classes ?? []).reduce((sum: number, c: any) => sum + c.level, 0);
 
   // Base stats from rolled/assigned values
-  const baseStats = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
+// Step 1: base rolled stats
+const baseStats = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
 
-  for (const stat of data.stats ?? []) {
-    const key = STAT_ID_MAP[stat.id];
-    if (key) baseStats[key] = stat.value ?? 10;
-  }
+for (const stat of data.stats ?? []) {
+  const key = STAT_ID_MAP[stat.id];
+  if (key) baseStats[key] = stat.value ?? 10;
+}
 
-  // All bonuses (racial, class, feat, ASI) live in data.modifiers keyed by source
-  for (const modGroup of Object.values(data.modifiers ?? {}) as any[][]) {
-    for (const mod of modGroup ?? []) {
-      if (mod.type === "bonus" && mod.subType?.endsWith("-score")) {
-        const rawKey = mod.subType.replace("-score", "");
-        const key = ABILITY_KEY_MAP[rawKey];
-        if (key) baseStats[key] += mod.value ?? 0;
-      }
+// Step 2: override stats (DM-set absolute values, highest priority)
+for (const stat of data.overrideStats ?? []) {
+  if (stat.value == null) continue;
+  const key = STAT_ID_MAP[stat.id];
+  if (key) baseStats[key] = stat.value;
+}
+
+// Step 3: collect all modifiers by ability
+const setBonuses: Partial<Record<keyof typeof baseStats, number>> = {};
+const addBonuses: Partial<Record<keyof typeof baseStats, number>> = {};
+
+for (const modGroup of Object.values(data.modifiers ?? {}) as any[][]) {
+  for (const mod of modGroup ?? []) {
+    const subType: string = mod.subType ?? "";
+    if (!subType.endsWith("-score")) continue;
+
+    const rawKey = subType.replace("-score", "");
+    const key = ABILITY_KEY_MAP[rawKey];
+    if (!key) continue;
+
+    const val: number = mod.value ?? mod.fixedValue ?? 0;
+
+    if (mod.type === "set") {
+      // Take the highest set value (e.g. multiple items setting STR)
+      setBonuses[key] = Math.max(setBonuses[key] ?? 0, val);
+    } else if (mod.type === "bonus") {
+      addBonuses[key] = (addBonuses[key] ?? 0) + val;
     }
   }
+}
+
+// Apply: set overrides base+bonus if it results in a higher value
+for (const key of Object.keys(baseStats) as (keyof typeof baseStats)[]) {
+  const withBonus = baseStats[key] + (addBonuses[key] ?? 0);
+  const setVal = setBonuses[key];
+  if (setVal != null) {
+    // Use whichever is higher — set or base+bonus
+    baseStats[key] = Math.max(withBonus, setVal);
+  } else {
+    baseStats[key] = withBonus;
+  }
+}
 
   const profBonus = level >= 17 ? 6 : level >= 13 ? 5 : level >= 9 ? 4 : level >= 5 ? 3 : 2;
   const dexMod = Math.floor((baseStats.dex - 10) / 2);
@@ -289,10 +328,42 @@ export function parseCharacter(data: any): CharacterStats {
   const tempHp = data.temporaryHitPoints ?? 0;
 
   const ac = calculateAc(data.inventory ?? [], dexMod, data.overrideArmorClass ?? null);
-  const speed = data.race?.weightSpeeds?.normal?.walk ?? 30;
+  // Speed: base from race + any bonus modifiers
+const baseSpeed = data.race?.weightSpeeds?.normal?.walk ?? 30;
 
+const speedBonus = (Object.values(data.modifiers ?? {}) as any[][])
+  .flat()
+  .filter((m: any) => m.type === "bonus" && m.subType === "speed")
+  .reduce((sum: number, m: any) => sum + (m.value ?? m.fixedValue ?? 0), 0);
+
+const speed = baseSpeed + speedBonus;
   const skillProficiencies = extractSkillProficiencies(data.modifiers ?? {});
   const consumables = extractConsumables(data.actions ?? {}, rawClasses, profBonus, intMod);
+
+// Passive scores = 10 + skill modifier
+// Skill modifier = ability mod + proficiency if proficient
+const wisMod = Math.floor((baseStats.wis - 10) / 2);
+const intModFinal = Math.floor((baseStats.int - 10) / 2);
+
+const allMods = (Object.values(data.modifiers ?? {}) as any[][]).flat();
+
+const hasProficiency = (skill: string) =>
+  allMods.some((m: any) => m.type === "proficiency" && m.subType === skill);
+
+const hasExpertise = (skill: string) =>
+  allMods.some((m: any) => m.type === "expertise" && m.subType === skill);
+
+const skillMod = (abilityMod: number, skill: string) => {
+  if (hasExpertise(skill)) return abilityMod + profBonus * 2;
+  if (hasProficiency(skill)) return abilityMod + profBonus;
+  return abilityMod;
+};
+
+const passives = {
+  perception:    10 + skillMod(wisMod, "perception"),
+  investigation: 10 + skillMod(intModFinal, "investigation"),
+  insight:       10 + skillMod(wisMod, "insight"),
+};
 
   return {
     name,
@@ -308,6 +379,7 @@ export function parseCharacter(data: any): CharacterStats {
     rawClasses,
     skillProficiencies,
     consumables,
+	passives,
   };
 }
 

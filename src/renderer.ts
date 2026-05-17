@@ -82,6 +82,20 @@ items:
     value: "${8 + char.proficiencyBonus + Math.floor((char.abilities.int - 10) / 2)}"
 \`\`\`
 
+---
+
+\`\`\`badges
+items:
+  - label: Passive Perception
+    value: "${char.passives.perception}"
+  - label: Passive Investigation
+    value: "${char.passives.investigation}"
+  - label: Passive Insight
+    value: "${char.passives.insight}"
+\`\`\`
+
+---
+
 \`\`\`healthpoints
 state_key: ${stateKey}_health
 health: ${char.hp.max}

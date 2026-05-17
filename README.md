@@ -1,90 +1,46 @@
-# Obsidian Sample Plugin
+# obsidian-dndbeyond-sync
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+> [!WARNING]
+> ## ⚠️ COMPLETELY VIBE CODED ⚠️
+> This plugin was entirely vibe coded from start to finish. No guarantees, no warranties, no promises.
+> It works on my machine. It might work on yours. It might delete your notes, summon a demon, or roll a nat 1.
+> Use at your own risk. Back up your vault. You have been warned.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+---
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open modal (simple)" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+A plugin for [Obsidian](https://obsidian.md) that syncs your D&D Beyond character sheets directly into your vault — including stats, HP, spells, inventory, consumables, and more.
 
-## First time developing plugins?
+## Features
 
-Quick starting guide for new plugin devs:
+- Sync character stats, ability scores, AC, HP, speed, and passives
+- Renders using the [obsidian-dnd-ui-toolkit](https://github.com/hay-kot/obsidian-dnd-ui-toolkit) blocks (`badges`, `healthpoints`, `ability`, `skills`, `consumable`)
+- Individual spell notes with school, casting time, range, damage, healing, attack bonus, and save DC
+- Individual inventory item notes with type, rarity, weight, AC, and damage
+- Spell and inventory master views as Obsidian `.base` files with multiple views
+- Supports multiple characters — each syncs into its own folder
+- Subclass granted spells parsed from feature descriptions (even when the API omits them)
+- Correct AC calculation for light, medium, and heavy armor plus shields
+- Handles `set` and `bonus` stat modifiers (e.g. Belt of Giant Strength)
+- Speed bonuses from class features (e.g. Monk Unarmored Movement)
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+## Requirements
 
-## Releasing new releases
+- Obsidian 1.9.2 or later (for `.base` file support)
+- [obsidian-dnd-ui-toolkit](https://github.com/hay-kot/obsidian-dnd-ui-toolkit) plugin installed and enabled
+- A D&D Beyond account with at least one character set to **Public**, or a CobaltSession token for private characters
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+## Installation
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+1. Clone or download this repo into your vault's `.obsidian/plugins/` folder
+2. Run `npm install` then `npm run build` inside the plugin folder
+3. Enable the plugin in Obsidian under Settings → Community Plugins
 
-## Adding your plugin to the community plugin list
+## Usage
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+1. Open Settings → D&D Beyond Sync
+2. Click **+ Add Character** and enter your character ID
+   - Your character ID is the number at the end of your D&D Beyond URL: `dndbeyond.com/characters/12345678`
+3. Optionally paste your `CobaltSession` cookie for private characters
+4. Click **Sync** next to a character or **Sync All** to sync everything
 
-## How to use
-
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
-
-## Manually installing the plugin
-
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
-
-## Improve code quality with eslint
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- This project already has eslint preconfigured, you can invoke a check by running`npm run lint`
-- Together with a custom eslint [plugin](https://github.com/obsidianmd/eslint-plugin) for Obsidan specific code guidelines.
-- A GitHub action is preconfigured to automatically lint every commit on all branches.
-
-## Funding URL
-
-You can include funding URLs where people who use your plugin can financially support it.
-
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
-```
-
-If you have multiple URLs, you can also do:
-
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
-
-## API Documentation
-
-See https://docs.obsidian.md
+Each character syncs into a folder named after the character:
