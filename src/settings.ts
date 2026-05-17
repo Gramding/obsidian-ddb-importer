@@ -1,6 +1,7 @@
 export interface CharacterEntry {
   id: string;
   cobaltToken: string;
+folder: string;
 }
 
 export interface DdbSyncSettings {

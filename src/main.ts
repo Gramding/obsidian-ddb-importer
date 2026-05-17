@@ -34,35 +34,34 @@ export default class DdbSyncPlugin extends Plugin {
   }
 
   async syncCharacter(entry: CharacterEntry) {
-    const data = await fetchCharacter(
-      entry.id,
-      entry.cobaltToken || undefined
-    );
+  const data = await fetchCharacter(
+    entry.id,
+    entry.cobaltToken || undefined
+  );
 
-    const stats     = parseCharacter(data);
-    const intMod    = Math.floor((stats.abilities.int - 10) / 2);
-    const spells    = parseSpells(data, stats.proficiencyBonus, intMod);
-    const inventory = parseInventory(data);
+  const stats     = parseCharacter(data);
+  const intMod    = Math.floor((stats.abilities.int - 10) / 2);
+  const spells    = parseSpells(data, stats.proficiencyBonus, intMod);
+  const inventory = parseInventory(data);
 
-    const charFolder = stats.name;
-    const sheetPath  = `${charFolder}/${stats.name}.md`;
-    const basePath   = `${charFolder}/Components`;
-    const baseName   = `${charFolder}/${stats.name}`;
+  const root       = entry.folder ? `${entry.folder}/${stats.name}` : stats.name;
+  const sheetPath  = `${root}/${stats.name}.md`;
+  const basePath   = `${root}/Components`;
+  const baseName   = `${root}/${stats.name}`;
 
-    await this.writeFile(sheetPath, renderNote(stats, entry.id));
-    await this.writeFile(`${baseName} - Spells.base`,    renderSpellBase(stats.name, basePath));
-    await this.writeFile(`${baseName} - Inventory.base`, renderInventoryBase(stats.name, basePath));
+  await this.writeFile(sheetPath, renderNote(stats, entry.id));
+  await this.writeFile(`${baseName} - Spells.base`,    renderSpellBase(stats.name, basePath));
+  await this.writeFile(`${baseName} - Inventory.base`, renderInventoryBase(stats.name, basePath));
 
-    for (const f of renderSpellFiles(stats.name, spells, basePath)) {
-      await this.writeFile(f.path, f.content);
-    }
-    for (const f of renderItemFiles(stats.name, inventory, basePath)) {
-      await this.writeFile(f.path, f.content);
-    }
-
-    return stats.name;
+  for (const f of renderSpellFiles(stats.name, spells, basePath)) {
+    await this.writeFile(f.path, f.content);
+  }
+  for (const f of renderItemFiles(stats.name, inventory, basePath)) {
+    await this.writeFile(f.path, f.content);
   }
 
+  return stats.name;
+}
   async syncAllCharacters() {
     if (this.settings.characters.length === 0) {
       new Notice("D&D Beyond Sync: No characters configured in settings.");
@@ -97,13 +96,13 @@ export default class DdbSyncPlugin extends Plugin {
     // Migrate old single-character settings if present
     const raw = await this.loadData() as any;
     if (raw?.characterId && this.settings.characters.length === 0) {
-      this.settings.characters = [{
-        id: raw.characterId,
-        cobaltToken: raw.cobaltToken ?? "",
-      }];
-      await this.saveSettings();
-    }
-  }
+  this.settings.characters = [{
+    id: raw.characterId,
+    cobaltToken: raw.cobaltToken ?? "",
+    folder: "",
+  }];
+  await this.saveSettings();
+}  }
 
   async saveSettings() {
     await this.saveData(this.settings);
@@ -160,17 +159,18 @@ class DdbSettingTab extends PluginSettingTab {
             this.display();
           }));
 
-      new Setting(containerEl)
-        .setName("CobaltSession token (optional)")
-        .setDesc("Only needed for private characters.")
-        .addText(t => t
-          .setPlaceholder("paste token here")
-          .setValue(entry.cobaltToken)
-          .onChange(async v => {
-            this.plugin.settings.characters[idx]!.cobaltToken = v.trim();
-            await this.plugin.saveSettings();
-          }));
-    }
+	new Setting(containerEl)
+  .setName("Sync folder")
+  .setDesc("Folder to sync this character into. Leave empty for vault root.")
+  .addText(t => t
+    .setPlaceholder("e.g. DnD/Characters")
+    .setValue(entry.folder)
+    .onChange(async v => {
+      this.plugin.settings.characters[idx]!.folder = v.trim().replace(/\/$/, "");
+      await this.plugin.saveSettings();
+    }));	
+
+          }
 
     // Add character button
     new Setting(containerEl)
@@ -180,7 +180,7 @@ class DdbSettingTab extends PluginSettingTab {
         .setButtonText("+ Add Character")
         .setCta()
         .onClick(async () => {
-          this.plugin.settings.characters.push({ id: "", cobaltToken: "" });
+          this.plugin.settings.characters.push({ id: "", cobaltToken: "", folder: ""});
           await this.plugin.saveSettings();
           this.display();
         }));
