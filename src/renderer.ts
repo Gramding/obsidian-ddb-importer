@@ -10,15 +10,16 @@ function getHitDice(char: CharacterStats): string {
   const classes = char.rawClasses ?? [];
   if (classes.length === 0) return `  dice: d8\n  value: ${char.level}`;
   if (classes.length === 1) {
-    const die = CLASS_HIT_DICE[classes[0].name.toLowerCase()] ?? "d8";
-    return `  dice: ${die}\n  value: ${classes[0].level}`;
+    const cls = classes[0];
+    if (!cls) return `  dice: d8\n  value: ${char.level}`;
+    const die = CLASS_HIT_DICE[cls.name.toLowerCase()] ?? "d8";
+    return `  dice: ${die}\n  value: ${cls.level}`;
   }
   return classes.map(c => {
     const die = CLASS_HIT_DICE[c.name.toLowerCase()] ?? "d8";
     return `  - dice: ${die} # ${c.name}\n    value: ${c.level}`;
   }).join("\n");
 }
-
 function renderSkills(skills: string[]): string {
   if (skills.length === 0) return "";
   return `\`\`\`skills
@@ -44,6 +45,7 @@ export function renderNote(char: CharacterStats, characterId: string): string {
   const { abilities: ab } = char;
   const hitdice = getHitDice(char);
   const stateKey = char.name.toLowerCase().replace(/\s+/g, "_");
+  const baseName = char.name;
 
   return `---
 name: "${char.name}"
@@ -72,6 +74,12 @@ items:
     value: "+{{ modifier abilities.dexterity }}"
   - label: Speed
     value: "${char.speed} ft"
+  - label: Spell Modifier
+    value: "+${Math.floor((char.abilities.int - 10) / 2)}"
+  - label: Spell Attack
+    value: "+${char.proficiencyBonus + Math.floor((char.abilities.int - 10) / 2)}"
+  - label: Spell Save DC
+    value: "${8 + char.proficiencyBonus + Math.floor((char.abilities.int - 10) / 2)}"
 \`\`\`
 
 \`\`\`healthpoints
@@ -80,14 +88,6 @@ health: ${char.hp.max}
 hitdice:
 ${hitdice}
 reset_on: long-rest
-\`\`\`
-
-\`\`\`event-btns
-items:
-  - name: Short Rest
-    value: short-rest
-  - name: Long Rest
-    value: long-rest
 \`\`\`
 
 \`\`\`ability
@@ -103,6 +103,12 @@ abilities:
 ${renderSkills(char.skillProficiencies)}
 
 ${renderConsumables(char)}
+
+> [!info]- Spells
+> ![[${baseName} - Spells.base]]
+
+> [!info]- Inventory
+> ![[${baseName} - Inventory.base]]
 
 > Synced from [D&D Beyond](https://www.dndbeyond.com/characters/${characterId}) · ${new Date().toLocaleString()}
 `;
