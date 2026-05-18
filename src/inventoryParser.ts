@@ -1,3 +1,4 @@
+import { htmlToMarkdown } from "./utils";
 export interface InventoryItem {
   name: string;
   type: string;
@@ -13,16 +14,6 @@ export interface InventoryItem {
   damage: string | null;
 }
 
-function stripHtml(html: string): string {
-  return (html ?? "")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/\r\n/g, "\n")
-    .trim();
-}
 
 function parseDamage(def: any): string | null {
   if (!def.damage) return null;
@@ -45,8 +36,7 @@ export function parseInventory(data: any): InventoryItem[] {
       rarity: def.rarity ?? "Common",
       requiresAttunement: def.canAttune ?? false,
       attuned: item.isAttuned ?? false,
-      description: stripHtml(def.description ?? ""),
-      ac: def.armorClass ?? null,
+      description: htmlToMarkdown(def.description ?? ""),      ac: def.armorClass ?? null,
       damage: parseDamage(def),
     };
   }).sort((a: InventoryItem, b: InventoryItem) => {

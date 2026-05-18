@@ -7,11 +7,39 @@ export interface ConsumableItem {
 
 export interface CharacterStats {
 // Add to CharacterStats interface
+defenses: {
+  resistances: string[];
+  immunities: string[];
+  vulnerabilities: string[];
+  advantages: string[];
+};
 passives: {
   perception: number;
   investigation: number;
   insight: number;
 };
+defenses: {
+  resistances: string[];
+  immunities: string[];
+  vulnerabilities: string[];
+  advantages: string[];
+  disadvantages: string[];  // ADD
+};
+proficiencies: {
+  armor: string[];
+  weapons: string[];
+  tools: string[];
+  languages: string[];
+};
+savingThrows: {
+  str: number;
+  dex: number;
+  con: number;
+  int: number;
+  wis: number;
+  cha: number;
+};
+
   name: string;
   race: string;
   classes: string;
@@ -342,16 +370,16 @@ const speed = baseSpeed + speedBonus;
 
 // Passive scores = 10 + skill modifier
 // Skill modifier = ability mod + proficiency if proficient
-const wisMod = Math.floor((baseStats.wis - 10) / 2);
-const intModFinal = Math.floor((baseStats.int - 10) / 2);
-
 const allMods = (Object.values(data.modifiers ?? {}) as any[][]).flat();
 
-const hasProficiency = (skill: string) =>
-  allMods.some((m: any) => m.type === "proficiency" && m.subType === skill);
+const hasSaveProficiency = (ability: string) =>
+  allMods.some((m: any) => m.type === "proficiency" && m.subType === `${ability}-saving-throws`);
 
 const hasExpertise = (skill: string) =>
   allMods.some((m: any) => m.type === "expertise" && m.subType === skill);
+
+const hasProficiency = (skill: string) =>
+  allMods.some((m: any) => m.type === "proficiency" && m.subType === skill);
 
 const skillMod = (abilityMod: number, skill: string) => {
   if (hasExpertise(skill)) return abilityMod + profBonus * 2;
@@ -359,11 +387,131 @@ const skillMod = (abilityMod: number, skill: string) => {
   return abilityMod;
 };
 
+const strMod = Math.floor((baseStats.str - 10) / 2);
+const intModFinal = Math.floor((baseStats.int - 10) / 2);
+const wisMod = Math.floor((baseStats.wis - 10) / 2);
+const chaMod = Math.floor((baseStats.cha - 10) / 2);
+
+const savingThrows = {
+  str: strMod + (hasSaveProficiency("strength") ? profBonus : 0),
+  dex: dexMod + (hasSaveProficiency("dexterity") ? profBonus : 0),
+  con: conMod + (hasSaveProficiency("constitution") ? profBonus : 0),
+  int: intModFinal + (hasSaveProficiency("intelligence") ? profBonus : 0),
+  wis: wisMod + (hasSaveProficiency("wisdom") ? profBonus : 0),
+  cha: chaMod + (hasSaveProficiency("charisma") ? profBonus : 0),
+};
+
 const passives = {
   perception:    10 + skillMod(wisMod, "perception"),
   investigation: 10 + skillMod(intModFinal, "investigation"),
   insight:       10 + skillMod(wisMod, "insight"),
 };
+
+const ARMOR_PROFS = new Set(["light-armor", "medium-armor", "heavy-armor", "shields"]);
+const WEAPON_PROFS = new Set(["simple-weapons", "martial-weapons", "firearms"]);
+const LANGUAGE_PROFS = new Set([
+  "common", "dwarvish", "elvish", "giant", "gnomish", "goblin", "halfling",
+  "orc", "abyssal", "celestial", "draconic", "deep-speech", "infernal",
+  "primordial", "sylvan", "undercommon", "thieves-cant", "druidic",
+]);
+
+const armorProfs: string[] = [];
+const weaponProfs: string[] = [];
+const toolProfs: string[] = [];
+const languageProfs: string[] = [];
+
+for (const modGroup of Object.values(data.modifiers ?? {}) as any[][]) {
+  for (const mod of modGroup ?? []) {
+    if (mod.type !== "proficiency") continue;
+    const subType: string = mod.subType ?? "";
+    const friendly: string = mod.friendlySubtypeName ?? subType;
+
+    // Skip skills and saving throws — handled elsewhere
+    if (ALL_SKILLS.has(subType)) continue;
+    if (subType.endsWith("-saving-throws")) continue;
+
+    if (ARMOR_PROFS.has(subType)) {
+      if (!armorProfs.includes(friendly)) armorProfs.push(friendly);
+    } else if (WEAPON_PROFS.has(subType)) {
+      if (!weaponProfs.includes(friendly)) weaponProfs.push(friendly);
+    } else if (LANGUAGE_PROFS.has(subType)) {
+      if (!languageProfs.includes(friendly)) languageProfs.push(friendly);
+    } else {
+      // Everything else is a tool
+      if (!toolProfs.includes(friendly)) toolProfs.push(friendly);
+    }
+  }
+}
+
+// Replace the existing language section entirely
+for (const modGroup of Object.values(data.modifiers ?? {}) as any[][]) {
+  for (const mod of modGroup ?? []) {
+    if (mod.type === "language") {
+      const friendly: string = mod.friendlySubtypeName ?? mod.subType ?? "";
+      if (friendly && !languageProfs.includes(friendly)) {
+        languageProfs.push(friendly);
+      }
+    }
+  }
+}
+const proficiencies = {
+  armor:     armorProfs.sort(),
+  weapons:   weaponProfs.sort(),
+  tools:     toolProfs.sort(),
+  languages: languageProfs.sort(),
+};
+
+const resistances: string[] = [];
+const immunities: string[] = [];
+const vulnerabilities: string[] = [];
+const advantages: string[] = [];
+const disadvantages: string[] = [];
+
+for (const modGroup of Object.values(data.modifiers ?? {}) as any[][]) {
+  for (const mod of modGroup ?? []) {
+    const friendly: string = mod.friendlySubtypeName ?? mod.subType ?? "";
+    if (!friendly) continue;
+
+    const restriction: string = mod.restriction ? ` (${mod.restriction})` : "";
+    const label = `${friendly}${restriction}`;
+
+    if (mod.type === "resistance" && !resistances.includes(label))
+      resistances.push(label);
+    else if (mod.type === "immunity" && !immunities.includes(label))
+      immunities.push(label);
+    else if (mod.type === "vulnerability" && !vulnerabilities.includes(label))
+      vulnerabilities.push(label);
+    else if (mod.type === "advantage" && !advantages.includes(label))
+      advantages.push(label);
+    else if (mod.type === "disadvantage" && !disadvantages.includes(label))
+      disadvantages.push(label);
+  }
+}
+
+// Check equipped armor/items for stealth penalty and other item-based disadvantages
+for (const item of data.inventory ?? []) {
+  if (!item.equipped) continue;
+  const def = item.definition;
+
+  // stealthCheck: 1 = disadvantage
+  // stealthCheck: 2 = disadvantage, 1 = normal/no penalty
+if (def.stealthCheck === 2) {
+  const label = `Stealth (${def.name})`;
+  if (!disadvantages.includes(label)) disadvantages.push(label);
+}
+  // Item granted modifiers
+  for (const mod of def.grantedModifiers ?? []) {
+    const friendly: string = mod.friendlySubtypeName ?? mod.subType ?? "";
+    if (!friendly) continue;
+    const restriction: string = mod.restriction ? ` (${mod.restriction})` : "";
+    const label = `${friendly}${restriction}`;
+
+    if (mod.type === "disadvantage" && !disadvantages.includes(label))
+      disadvantages.push(label);
+  }
+}
+
+const defenses = { resistances, immunities, vulnerabilities, advantages, disadvantages };
 
   return {
     name,
@@ -380,6 +528,9 @@ const passives = {
     skillProficiencies,
     consumables,
 	passives,
+		savingThrows,
+	proficiencies,
+		defenses,
   };
 }
 

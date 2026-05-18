@@ -1,3 +1,4 @@
+import { htmlToMarkdown } from "./utils";
 export interface Spell {
   name: string;
   level: number;
@@ -71,17 +72,6 @@ function parseComponents(components: number[], componentsDescription: string): s
   return comps;
 }
 
-function stripHtml(html: string): string {
-  return (html ?? "")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&rsquo;/g, "'")
-    .replace(/\r\n/g, "\n")
-    .trim();
-}
 
 function parseDiceFromDescription(description: string): { damage: string | null; healing: string | null } {
   const damageRegex = /(\d+d\d+(?:\s*[+-]\s*\d+)?)\s+(\w+)\s+damage/gi;
@@ -142,7 +132,7 @@ function parseSpellEntry(entry: any, source: string, profBonus: number, intMod: 
   const requiresAttackRoll: boolean = def.requiresAttackRoll ?? false;
   const requiresSavingThrow: boolean = def.requiresSavingThrow ?? false;
   const saveDcAbilityId: number | null = def.saveDcAbilityId ?? null;
-  const description = stripHtml(def.description ?? def.snippet ?? "");
+  const description = htmlToMarkdown(def.description ?? def.snippet ?? "");
 
   const { attackBonus, saveDc, damage, healing } = computeSpellStats(
     description, profBonus, intMod, requiresAttackRoll, requiresSavingThrow

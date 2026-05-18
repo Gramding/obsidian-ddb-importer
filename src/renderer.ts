@@ -6,6 +6,51 @@ const CLASS_HIT_DICE: Record<string, string> = {
   sorcerer: "d6", wizard: "d6", artificer: "d8",
 };
 
+function signed(n: number): string {
+  return n >= 0 ? `+${n}` : `${n}`;
+}
+
+function renderDefenses(char: CharacterStats): string {
+  const { defenses: d } = char;
+
+  if (
+    d.resistances.length === 0 &&
+    d.immunities.length === 0 &&
+    d.vulnerabilities.length === 0 &&
+    d.advantages.length === 0 &&
+    d.disadvantages.length === 0
+  ) return "";
+
+  const items: string[] = [];
+
+  for (const r of d.resistances)      items.push(`  - label: "Resistance"\n    value: "${r}"`);
+  for (const i of d.immunities)       items.push(`  - label: "Immunity"\n    value: "${i}"`);
+  for (const v of d.vulnerabilities)  items.push(`  - label: "Vulnerability"\n    value: "${v}"`);
+  for (const a of d.advantages)       items.push(`  - label: "Advantage"\n    value: "${a}"`);
+  for (const da of d.disadvantages)   items.push(`  - label: "Disadvantage"\n    value: "${da}"`);
+
+  return `\`\`\`badges
+items:
+${items.join("\n")}
+\`\`\``;
+}
+function renderProficiencies(char: CharacterStats): string {
+  const rows = [
+    ["Armor",     char.proficiencies.armor.join(", ")     || "—"],
+    ["Weapons",   char.proficiencies.weapons.join(", ")   || "—"],
+    ["Tools",     char.proficiencies.tools.join(", ")     || "—"],
+    ["Languages", char.proficiencies.languages.join(", ") || "—"],
+  ];
+
+  const table = rows.map(([cat, vals]) => `| **${cat}** | ${vals} |`).join("\n");
+
+  return `## Proficiencies & Training
+
+| Type | Proficiencies |
+|---|---|
+${table}`;
+}
+
 function getHitDice(char: CharacterStats): string {
   const classes = char.rawClasses ?? [];
   if (classes.length === 0) return `  dice: d8\n  value: ${char.level}`;
@@ -57,7 +102,6 @@ ac: ${char.ac}
 speed: ${char.speed}
 synced_at: "${new Date().toISOString()}"
 ---
-
 # ${char.name}
 
 \`\`\`badges
@@ -81,9 +125,7 @@ items:
   - label: Spell Save DC
     value: "${8 + char.proficiencyBonus + Math.floor((char.abilities.int - 10) / 2)}"
 \`\`\`
-
 ---
-
 \`\`\`badges
 items:
   - label: Passive Perception
@@ -93,9 +135,25 @@ items:
   - label: Passive Insight
     value: "${char.passives.insight}"
 \`\`\`
-
 ---
-
+\`\`\`badges
+items:
+  - label: STR Save
+    value: "${signed(char.savingThrows.str)}"
+  - label: DEX Save
+    value: "${signed(char.savingThrows.dex)}"
+  - label: CON Save
+    value: "${signed(char.savingThrows.con)}"
+  - label: INT Save
+    value: "${signed(char.savingThrows.int)}"
+  - label: WIS Save
+    value: "${signed(char.savingThrows.wis)}"
+  - label: CHA Save
+    value: "${signed(char.savingThrows.cha)}"
+\`\`\`
+---
+${renderDefenses(char)}
+---
 \`\`\`healthpoints
 state_key: ${stateKey}_health
 health: ${char.hp.max}
@@ -118,10 +176,19 @@ ${renderSkills(char.skillProficiencies)}
 
 ${renderConsumables(char)}
 
-> [!info]- Spells
+> [!abstract]- Proficiencies & Training
+> ![[Proficiencies]]
+
+> [!abstract]- Actions
+> ![[${baseName} - Actions]]
+
+> [!abstract]- Features & Traits
+> ![[${baseName} - Features.base]]
+
+> [!abstract]- Spells
 > ![[${baseName} - Spells.base]]
 
-> [!info]- Inventory
+> [!abstract]- Inventory
 > ![[${baseName} - Inventory.base]]
 
 > Synced from [D&D Beyond](https://www.dndbeyond.com/characters/${characterId}) · ${new Date().toLocaleString()}

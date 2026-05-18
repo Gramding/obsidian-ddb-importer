@@ -5,6 +5,9 @@ import { parseCharacter } from "./parser";
 import { renderNote } from "./renderer";
 import { parseSpells, renderSpellFiles, renderSpellBase } from "./spellParser";
 import { parseInventory, renderItemFiles, renderInventoryBase } from "./inventoryParser";
+import { parseFeatures, renderFeatureFiles, renderFeaturesBase } from "./featuresParser";
+import { parseActions, renderActionsNote } from "./actionsParser";
+import { renderProficiencyFile } from "./proficienciesParser";
 
 export default class DdbSyncPlugin extends Plugin {
   settings: DdbSyncSettings;
@@ -48,10 +51,14 @@ export default class DdbSyncPlugin extends Plugin {
   const sheetPath  = `${root}/${stats.name}.md`;
   const basePath   = `${root}/Components`;
   const baseName   = `${root}/${stats.name}`;
+ const features  = parseFeatures(data); 
 
   await this.writeFile(sheetPath, renderNote(stats, entry.id));
   await this.writeFile(`${baseName} - Spells.base`,    renderSpellBase(stats.name, basePath));
   await this.writeFile(`${baseName} - Inventory.base`, renderInventoryBase(stats.name, basePath));
+await this.writeFile(`${baseName} - Features.base`, renderFeaturesBase(stats.name, basePath));
+const profFile = renderProficiencyFile(stats.name, stats.proficiencies, basePath);
+await this.writeFile(profFile.path, profFile.content);
 
   for (const f of renderSpellFiles(stats.name, spells, basePath)) {
     await this.writeFile(f.path, f.content);
@@ -59,6 +66,18 @@ export default class DdbSyncPlugin extends Plugin {
   for (const f of renderItemFiles(stats.name, inventory, basePath)) {
     await this.writeFile(f.path, f.content);
   }
+for (const f of renderFeatureFiles(stats.name, features, basePath)) {
+  await this.writeFile(f.path, f.content);
+}
+
+const strMod = Math.floor((stats.abilities.str - 10) / 2);
+const dexMod = Math.floor((stats.abilities.dex - 10) / 2);
+const actions = parseActions(data, stats.proficiencyBonus, strMod, dexMod, spells);
+
+await this.writeFile(`${root}/${stats.name} - Actions.md`, renderActionsNote(stats.name, actions));
+
+new Notice(`✅ ${stats.name} synced! (${spells.length} spells, ${inventory.length} items, ${features.length} features)`);
+
 
   return stats.name;
 }
