@@ -1,7 +1,7 @@
 {
   "id": "dndbeyond-sync",
   "name": "DnD Beyond Sync",
-  "version": "0.1",
+  "version": "0.2",
   "minAppVersion": "1.9.2",
   "description": "Sync your D&D Beyond character sheets into Obsidian, including stats, spells, inventory, and more.",
   "author": "Gramding",
