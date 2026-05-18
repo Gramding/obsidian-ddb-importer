@@ -52,9 +52,13 @@ export default class DdbSyncPlugin extends Plugin {
   const basePath   = `${root}/Components`;
   const baseName   = `${root}/${stats.name}`;
  const features  = parseFeatures(data); 
+let portraitPath: string | null = null;
+if (entry.downloadPortrait) {
+  portraitPath = await this.downloadPortrait(data, basePath, stats.name);
+}
 
-  await this.writeFile(sheetPath, renderNote(stats, entry.id));
-  await this.writeFile(`${baseName} - Spells.base`,    renderSpellBase(stats.name, basePath));
+  await this.writeFile(sheetPath, renderNote(stats, entry.id, portraitPath));
+		await this.writeFile(`${baseName} - Spells.base`,    renderSpellBase(stats.name, basePath));
   await this.writeFile(`${baseName} - Inventory.base`, renderInventoryBase(stats.name, basePath));
 await this.writeFile(`${baseName} - Features.base`, renderFeaturesBase(stats.name, basePath));
 const profFile = renderProficiencyFile(stats.name, stats.proficiencies, basePath);
@@ -77,6 +81,7 @@ const actions = parseActions(data, stats.proficiencyBonus, strMod, dexMod, spell
 await this.writeFile(`${root}/${stats.name} - Actions.md`, renderActionsNote(stats.name, actions));
 
 new Notice(`✅ ${stats.name} synced! (${spells.length} spells, ${inventory.length} items, ${features.length} features)`);
+
 
 
   return stats.name;
@@ -109,6 +114,46 @@ new Notice(`✅ ${stats.name} synced! (${spells.length} spells, ${inventory.leng
       new Notice(`❌ Failed: ${errors.join(", ")}`);
     }
   }
+
+async downloadPortrait(data: any, basePath: string, charName: string): Promise<string | null> {
+  try {
+    const avatarUrl: string | null = data.decorations?.avatarUrl ?? null;
+    console.log("DDB Portrait: avatarUrl =", avatarUrl);
+    if (!avatarUrl) {
+      console.log("DDB Portrait: no avatarUrl found");
+      return null;
+    }
+
+    const cleanUrl = avatarUrl.split("?")[0];
+    console.log("DDB Portrait: fetching", cleanUrl);
+
+    const response = await requestUrl({ url: cleanUrl, method: "GET" });
+    console.log("DDB Portrait: response status", response.status);
+    console.log("DDB Portrait: arrayBuffer size", response.arrayBuffer.byteLength);
+
+    const ext = cleanUrl.split(".").pop()?.toLowerCase() ?? "jpg";
+    const portraitPath = `${basePath}/portrait.${ext}`;
+    console.log("DDB Portrait: writing to", portraitPath);
+
+    const existing = this.app.vault.getAbstractFileByPath(portraitPath);
+    if (existing instanceof TFile) {
+      await this.app.vault.modifyBinary(existing, response.arrayBuffer);
+    } else {
+      const folder = portraitPath.substring(0, portraitPath.lastIndexOf("/"));
+      console.log("DDB Portrait: creating folder", folder);
+      if (folder) await this.app.vault.createFolder(folder).catch((e) => {
+        console.log("DDB Portrait: folder already exists or error", e);
+      });
+      await this.app.vault.createBinary(portraitPath, response.arrayBuffer);
+    }
+
+    console.log("DDB Portrait: done, path =", portraitPath);
+    return portraitPath;
+  } catch (e) {
+    console.error("DDB Portrait: download failed", e);
+    return null;
+  }
+}
 
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -177,7 +222,6 @@ class DdbSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
             this.display();
           }));
-
 	new Setting(containerEl)
   .setName("Sync folder")
   .setDesc("Folder to sync this character into. Leave empty for vault root.")
@@ -190,6 +234,15 @@ class DdbSettingTab extends PluginSettingTab {
     }));	
 
           }
+new Setting(containerEl)
+  .setName("Download portrait")
+  .setDesc("Download the character portrait and store it in the Components folder.")
+  .addToggle(t => t
+    .setValue(entry.downloadPortrait ?? false)
+    .onChange(async v => {
+      this.plugin.settings.characters[idx]!.downloadPortrait = v;
+      await this.plugin.saveSettings();
+    }));
 
     // Add character button
     new Setting(containerEl)

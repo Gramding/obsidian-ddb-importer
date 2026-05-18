@@ -86,11 +86,15 @@ ${items}
 \`\`\``;
 }
 
-export function renderNote(char: CharacterStats, characterId: string): string {
+export function renderNote(char: CharacterStats, characterId: string, portraitPath: string | null = null): string {
   const { abilities: ab } = char;
   const hitdice = getHitDice(char);
   const stateKey = char.name.toLowerCase().replace(/\s+/g, "_");
   const baseName = char.name;
+ // Portrait frontmatter — use just the filename for Obsidian wikilink
+  const portraitFrontmatter = portraitPath
+    ? `portrait: "[[${portraitPath}]]"`
+    : `portrait: null`;
 
   return `---
 name: "${char.name}"
@@ -101,6 +105,7 @@ proficiency_bonus: ${char.proficiencyBonus}
 ac: ${char.ac}
 speed: ${char.speed}
 synced_at: "${new Date().toISOString()}"
+${portraitFrontmatter}
 ---
 # ${char.name}
 

@@ -1,7 +1,8 @@
 export interface CharacterEntry {
   id: string;
   cobaltToken: string;
-folder: string;
+  folder: string;
+  downloadPortrait: boolean; // ADD
 }
 
 export interface DdbSyncSettings {
