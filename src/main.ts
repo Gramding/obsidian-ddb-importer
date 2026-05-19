@@ -182,88 +182,97 @@ class DdbSettingTab extends PluginSettingTab {
   }
 
   display() {
-    const { containerEl } = this;
-    containerEl.empty();
-    containerEl.createEl("h2", { text: "D&D Beyond Sync" });
+  const { containerEl } = this;
+  containerEl.empty();
+  containerEl.createEl("h2", { text: "DDB Importer" });
 
-    // Per-character settings
-    for (let i = 0; i < this.plugin.settings.characters.length; i++) {
-      const entry = this.plugin.settings.characters[i]!;
-      const idx = i;
+  for (let i = 0; i < this.plugin.settings.characters.length; i++) {
+    const entry = this.plugin.settings.characters[i]!;
+    const idx = i;
 
-      containerEl.createEl("h3", { text: `Character ${i + 1}` });
+    containerEl.createEl("h3", { text: `Character ${i + 1}` });
 
-      new Setting(containerEl)
-        .setName("Character ID")
-        .setDesc("The number at the end of your D&D Beyond character URL.")
-        .addText(t => t
-          .setPlaceholder("e.g. 12345678")
-          .setValue(entry.id)
-          .onChange(async v => {
-            this.plugin.settings.characters[idx]!.id = v.trim();
-            await this.plugin.saveSettings();
-          }))
-        .addButton(b => b
-          .setButtonText("Sync")
-          .onClick(async () => {
-            try {
-              new Notice(`Syncing character ${entry.id}…`);
-              const name = await this.plugin.syncCharacter(entry);
-              new Notice(`✅ ${name} synced!`);
-            } catch (e: unknown) {
-              new Notice(`❌ Failed: ${e instanceof Error ? e.message : String(e)}`);
-            }
-          }))
-        .addButton(b => b
-          .setButtonText("Remove")
-          .setWarning()
-          .onClick(async () => {
-            this.plugin.settings.characters.splice(idx, 1);
-            await this.plugin.saveSettings();
-            this.display();
-          }));
-	new Setting(containerEl)
-  .setName("Sync folder")
-  .setDesc("Folder to sync this character into. Leave empty for vault root.")
-  .addText(t => t
-    .setPlaceholder("e.g. DnD/Characters")
-    .setValue(entry.folder)
-    .onChange(async v => {
-      this.plugin.settings.characters[idx]!.folder = v.trim().replace(/\/$/, "");
-      await this.plugin.saveSettings();
-    }));	
-
-          }
-new Setting(containerEl)
-  .setName("Download portrait")
-  .setDesc("Download the character portrait and store it in the Components folder.")
-  .addToggle(t => t
-    .setValue(entry.downloadPortrait ?? false)
-    .onChange(async v => {
-      this.plugin.settings.characters[idx]!.downloadPortrait = v;
-      await this.plugin.saveSettings();
-    }));
-
-    // Add character button
     new Setting(containerEl)
-      .setName("Add character")
-      .setDesc("Add another D&D Beyond character to sync.")
+      .setName("Character ID")
+      .setDesc("The number at the end of your D&D Beyond character URL.")
+      .addText(t => t
+        .setPlaceholder("e.g. 12345678")
+        .setValue(entry.id)
+        .onChange(async v => {
+          this.plugin.settings.characters[idx]!.id = v.trim();
+          await this.plugin.saveSettings();
+        }))
       .addButton(b => b
-        .setButtonText("+ Add Character")
-        .setCta()
+        .setButtonText("Sync")
         .onClick(async () => {
-          this.plugin.settings.characters.push({ id: "", cobaltToken: "", folder: ""});
+          try {
+            new Notice(`Syncing character ${entry.id}…`);
+            const name = await this.plugin.syncCharacter(entry);
+            new Notice(`✅ ${name} synced!`);
+          } catch (e: unknown) {
+            new Notice(`❌ Failed: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        }))
+      .addButton(b => b
+        .setButtonText("Remove")
+        .setWarning()
+        .onClick(async () => {
+          this.plugin.settings.characters.splice(idx, 1);
           await this.plugin.saveSettings();
           this.display();
         }));
 
-    // Sync all button
     new Setting(containerEl)
-      .setName("Sync all")
-      .setDesc("Sync all configured characters at once.")
-      .addButton(b => b
-        .setButtonText("Sync All")
-        .setCta()
-        .onClick(() => this.plugin.syncAllCharacters()));
-  }
+      .setName("Sync folder")
+      .setDesc("Folder to sync this character into. Leave empty for vault root.")
+      .addText(t => t
+        .setPlaceholder("e.g. DnD/Characters")
+        .setValue(entry.folder)
+        .onChange(async v => {
+          this.plugin.settings.characters[idx]!.folder = v.trim().replace(/\/$/, "");
+          await this.plugin.saveSettings();
+        }));
+
+    new Setting(containerEl)
+      .setName("CobaltSession token (optional)")
+      .setDesc("Only needed for private characters.")
+      .addText(t => t
+        .setPlaceholder("paste token here")
+        .setValue(entry.cobaltToken)
+        .onChange(async v => {
+          this.plugin.settings.characters[idx]!.cobaltToken = v.trim();
+          await this.plugin.saveSettings();
+        }));
+
+    new Setting(containerEl)
+      .setName("Download portrait")
+      .setDesc("Download the character portrait and store it in the Components folder.")
+      .addToggle(t => t
+        .setValue(this.plugin.settings.characters[idx]?.downloadPortrait ?? false)
+        .onChange(async v => {
+          this.plugin.settings.characters[idx]!.downloadPortrait = v;
+          await this.plugin.saveSettings();
+        }));
+  } // <-- end of for loop
+
+  new Setting(containerEl)
+    .setName("Add character")
+    .setDesc("Add another D&D Beyond character to sync.")
+    .addButton(b => b
+      .setButtonText("+ Add Character")
+      .setCta()
+      .onClick(async () => {
+        this.plugin.settings.characters.push({ id: "", cobaltToken: "", folder: "", downloadPortrait: false });
+        await this.plugin.saveSettings();
+        this.display();
+      }));
+
+  new Setting(containerEl)
+    .setName("Sync all")
+    .setDesc("Sync all configured characters at once.")
+    .addButton(b => b
+      .setButtonText("Sync All")
+      .setCta()
+      .onClick(() => this.plugin.syncAllCharacters()));
+}
 }
