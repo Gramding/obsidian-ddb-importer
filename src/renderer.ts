@@ -133,9 +133,10 @@ cha: ${char.abilities.cha}
 ---
 # ${char.name}
 
-\`\`\`ddb-hp
-\`\`\`
+
 \`\`\`ddb-sheet
+\`\`\`
+\`\`\`ddb-tabs
 \`\`\`
 
 > [!abstract]- Proficiencies & Training

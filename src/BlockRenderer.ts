@@ -1,5 +1,6 @@
 import { MarkdownPostProcessorContext, Plugin, App } from "obsidian";
 import { renderHpTracker } from "./HpTracker"
+import { renderTabBlock } from "./TabBlock";
 
 export interface CharacterFrontmatter {
   name: string;
@@ -118,6 +119,7 @@ export function registerBlocks(plugin: Plugin) {
   // Master block — renders everything in two-column layout
   plugin.registerMarkdownCodeBlockProcessor("ddb-sheet",       (src, el, ctx) => renderSheet(el, ctx));
   plugin.registerMarkdownCodeBlockProcessor("ddb-hp", (src, el, ctx) => renderHpTracker(el, ctx));
+  plugin.registerMarkdownCodeBlockProcessor("ddb-tabs", (src, el, ctx) => renderTabBlock(el, ctx));
 }
 
 // ─── Master Sheet ────────────────────────────────────────────────────────────
