@@ -106,80 +106,37 @@ ac: ${char.ac}
 speed: ${char.speed}
 synced_at: "${new Date().toISOString()}"
 ${portraitFrontmatter}
+skill_proficiencies: [${char.skillProficiencies.map(s => `"${s}"`).join(", ")}]
+resistances: [${char.defenses.resistances.map(s => `"${s}"`).join(", ")}]
+immunities: [${char.defenses.immunities.map(s => `"${s}"`).join(", ")}]
+vulnerabilities: [${char.defenses.vulnerabilities.map(s => `"${s}"`).join(", ")}]
+advantages: [${char.defenses.advantages.map(s => `"${s}"`).join(", ")}]
+disadvantages: [${char.defenses.disadvantages.map(s => `"${s}"`).join(", ")}]
+passive_perception: ${char.passives.perception}
+passive_investigation: ${char.passives.investigation}
+passive_insight: ${char.passives.insight}
+str_save: ${char.savingThrows.str}
+dex_save: ${char.savingThrows.dex}
+con_save: ${char.savingThrows.con}
+int_save: ${char.savingThrows.int}
+wis_save: ${char.savingThrows.wis}
+cha_save: ${char.savingThrows.cha}
+hp_current: ${char.hp.current}
+hp_max: ${char.hp.max}
+hp_temp: ${char.hp.temp}
+str: ${char.abilities.str}
+dex: ${char.abilities.dex}
+con: ${char.abilities.con}
+int: ${char.abilities.int}
+wis: ${char.abilities.wis}
+cha: ${char.abilities.cha}
 ---
 # ${char.name}
 
-\`\`\`badges
-items:
-  - label: Race
-    value: "${char.race}"
-  - label: Class
-    value: "${char.classes}"
-  - label: Level
-    value: "{{ frontmatter.level }}"
-  - label: AC
-    value: "${char.ac}"
-  - label: Initiative
-    value: "+{{ modifier abilities.dexterity }}"
-  - label: Speed
-    value: "${char.speed} ft"
-  - label: Spell Modifier
-    value: "+${Math.floor((char.abilities.int - 10) / 2)}"
-  - label: Spell Attack
-    value: "+${char.proficiencyBonus + Math.floor((char.abilities.int - 10) / 2)}"
-  - label: Spell Save DC
-    value: "${8 + char.proficiencyBonus + Math.floor((char.abilities.int - 10) / 2)}"
+\`\`\`ddb-hp
 \`\`\`
----
-\`\`\`badges
-items:
-  - label: Passive Perception
-    value: "${char.passives.perception}"
-  - label: Passive Investigation
-    value: "${char.passives.investigation}"
-  - label: Passive Insight
-    value: "${char.passives.insight}"
+\`\`\`ddb-sheet
 \`\`\`
----
-\`\`\`badges
-items:
-  - label: STR Save
-    value: "${signed(char.savingThrows.str)}"
-  - label: DEX Save
-    value: "${signed(char.savingThrows.dex)}"
-  - label: CON Save
-    value: "${signed(char.savingThrows.con)}"
-  - label: INT Save
-    value: "${signed(char.savingThrows.int)}"
-  - label: WIS Save
-    value: "${signed(char.savingThrows.wis)}"
-  - label: CHA Save
-    value: "${signed(char.savingThrows.cha)}"
-\`\`\`
----
-${renderDefenses(char)}
----
-\`\`\`healthpoints
-state_key: ${stateKey}_health
-health: ${char.hp.max}
-hitdice:
-${hitdice}
-reset_on: long-rest
-\`\`\`
-
-\`\`\`ability
-abilities:
-  strength: ${ab.str}
-  dexterity: ${ab.dex}
-  constitution: ${ab.con}
-  intelligence: ${ab.int}
-  wisdom: ${ab.wis}
-  charisma: ${ab.cha}
-\`\`\`
-
-${renderSkills(char.skillProficiencies)}
-
-${renderConsumables(char)}
 
 > [!abstract]- Proficiencies & Training
 > ![[Proficiencies]]

@@ -8,12 +8,14 @@ import { parseInventory, renderItemFiles, renderInventoryBase } from "./inventor
 import { parseFeatures, renderFeatureFiles, renderFeaturesBase } from "./featuresParser";
 import { parseActions, renderActionsNote } from "./actionsParser";
 import { renderProficiencyFile } from "./proficienciesParser";
+import { registerBlocks } from "./BlockRenderer";
 
 export default class DdbSyncPlugin extends Plugin {
   settings: DdbSyncSettings;
 
   async onload() {
     await this.loadSettings();
+    registerBlocks(this);
     this.addRibbonIcon("dice", "Sync D&D Beyond", () => this.syncAllCharacters());
     this.addCommand({
       id: "sync-all-ddb-characters",
