@@ -36,6 +36,7 @@ export interface CharacterFrontmatter {
   ep: number;
   gp: number;
   pp: number;
+  hit_dice: { die: string; total: number; className: string }[];
   [key: string]: any;
 }
 

@@ -1,3 +1,9 @@
+export const CLASS_HIT_DICE: Record<string, string> = {
+  barbarian: "d12", fighter: "d10", paladin: "d10", ranger: "d10",
+  bard: "d8", cleric: "d8", druid: "d8", monk: "d8", rogue: "d8", warlock: "d8",
+  sorcerer: "d6", wizard: "d6", artificer: "d8",
+};
+
 export interface ConsumableItem {
   label: string;
   stateKey: string;
@@ -61,6 +67,7 @@ savingThrows: {
   skillProficiencies: string[];
   consumables: ConsumableItem[];
   currencies: { cp: number; sp: number; ep: number; gp: number; pp: number };
+  hitDice: { die: string; total: number; className: string }[];
 }
 
 const ALL_SKILLS = new Set([
@@ -375,6 +382,11 @@ const speed = baseSpeed + speedBonus;
     gp: data.currencies?.gp ?? 0,
     pp: data.currencies?.pp ?? 0,
   };
+  const hitDice = rawClasses.map(c => ({
+    className: c.name,
+    die: CLASS_HIT_DICE[c.name.toLowerCase()] ?? "d8",
+    total: c.level,
+  }));
 
 // Passive scores = 10 + skill modifier
 // Skill modifier = ability mod + proficiency if proficient
@@ -536,6 +548,7 @@ const defenses = { resistances, immunities, vulnerabilities, advantages, disadva
     skillProficiencies,
     consumables,
     currencies,
+    hitDice,
 	passives,
 		savingThrows,
 	proficiencies,

@@ -576,6 +576,38 @@ describe("currencies", () => {
 });
 
 // ─────────────────────────────────────────────
+// Hit Dice Extraction
+// ─────────────────────────────────────────────
+describe("hitDice", () => {
+  it("single known class maps to correct die type", () => {
+    const data = baseChar({
+      classes: [{ definition: { name: "Fighter", classFeatures: [] }, level: 5, subclassDefinition: null }],
+    });
+    expect(parseCharacter(data).hitDice).toEqual([{ className: "Fighter", die: "d10", total: 5 }]);
+  });
+
+  it("multiclass produces one entry per class with correct dice", () => {
+    const data = baseChar({
+      classes: [
+        { definition: { name: "Fighter", classFeatures: [] }, level: 3, subclassDefinition: null },
+        { definition: { name: "Rogue", classFeatures: [] }, level: 2, subclassDefinition: null },
+      ],
+    });
+    expect(parseCharacter(data).hitDice).toEqual([
+      { className: "Fighter", die: "d10", total: 3 },
+      { className: "Rogue",   die: "d8",  total: 2 },
+    ]);
+  });
+
+  it("unknown class defaults to d8", () => {
+    const data = baseChar({
+      classes: [{ definition: { name: "Mystic", classFeatures: [] }, level: 3, subclassDefinition: null }],
+    });
+    expect(parseCharacter(data).hitDice).toEqual([{ className: "Mystic", die: "d8", total: 3 }]);
+  });
+});
+
+// ─────────────────────────────────────────────
 // mod() helper
 // ─────────────────────────────────────────────
 import { mod } from "../src/parser";
