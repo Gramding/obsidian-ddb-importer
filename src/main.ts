@@ -1,4 +1,4 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting, TFile } from "obsidian";
+import { App, Notice, Plugin, PluginSettingTab, Setting, TFile, requestUrl } from "obsidian";
 import { DdbSyncSettings, DEFAULT_SETTINGS, CharacterEntry } from "./settings";
 import { fetchCharacter } from "./fetcher";
 import { parseCharacter } from "./parser";
@@ -126,7 +126,7 @@ async downloadPortrait(data: any, basePath: string, charName: string): Promise<s
       return null;
     }
 
-    const cleanUrl = avatarUrl.split("?")[0];
+    const cleanUrl = avatarUrl.split("?")[0] ?? avatarUrl;
     console.log("DDB Portrait: fetching", cleanUrl);
 
     const response = await requestUrl({ url: cleanUrl, method: "GET" });
@@ -166,6 +166,7 @@ async downloadPortrait(data: any, basePath: string, charName: string): Promise<s
     id: raw.characterId,
     cobaltToken: raw.cobaltToken ?? "",
     folder: "",
+    downloadPortrait: false,
   }];
   await this.saveSettings();
 }  }

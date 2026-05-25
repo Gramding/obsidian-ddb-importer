@@ -12,25 +12,18 @@ export interface ConsumableItem {
 }
 
 export interface CharacterStats {
-// Add to CharacterStats interface
-defenses: {
-  resistances: string[];
-  immunities: string[];
-  vulnerabilities: string[];
-  advantages: string[];
-};
-passives: {
-  perception: number;
-  investigation: number;
-  insight: number;
-};
-defenses: {
-  resistances: string[];
-  immunities: string[];
-  vulnerabilities: string[];
-  advantages: string[];
-  disadvantages: string[];  // ADD
-};
+  passives: {
+    perception: number;
+    investigation: number;
+    insight: number;
+  };
+  defenses: {
+    resistances: string[];
+    immunities: string[];
+    vulnerabilities: string[];
+    advantages: string[];
+    disadvantages: string[];
+  };
 proficiencies: {
   armor: string[];
   weapons: string[];
