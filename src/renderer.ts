@@ -1,10 +1,4 @@
-import { CharacterStats } from "./parser";
-
-const CLASS_HIT_DICE: Record<string, string> = {
-  barbarian: "d12", fighter: "d10", paladin: "d10", ranger: "d10",
-  bard: "d8", cleric: "d8", druid: "d8", monk: "d8", rogue: "d8", warlock: "d8",
-  sorcerer: "d6", wizard: "d6", artificer: "d8",
-};
+import { CharacterStats, CLASS_HIT_DICE } from "./parser";
 
 function signed(n: number): string {
   return n >= 0 ? `+${n}` : `${n}`;
@@ -87,9 +81,6 @@ ${items}
 }
 
 export function renderNote(char: CharacterStats, characterId: string, portraitPath: string | null = null): string {
-  const { abilities: ab } = char;
-  const hitdice = getHitDice(char);
-  const stateKey = char.name.toLowerCase().replace(/\s+/g, "_");
   const baseName = char.name;
  // Portrait frontmatter — use just the filename for Obsidian wikilink
   const portraitFrontmatter = portraitPath
@@ -135,6 +126,7 @@ sp: ${char.currencies.sp}
 ep: ${char.currencies.ep}
 gp: ${char.currencies.gp}
 pp: ${char.currencies.pp}
+hit_dice: ${JSON.stringify(char.hitDice)}
 ---
 # ${char.name}
 

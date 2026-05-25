@@ -36,6 +36,7 @@ export interface CharacterFrontmatter {
   ep: number;
   gp: number;
   pp: number;
+  hit_dice: { die: string; total: number; className: string }[];
   [key: string]: any;
 }
 
@@ -430,7 +431,7 @@ function renderSpells(el: HTMLElement, ctx: MarkdownPostProcessorContext) {
   const byLevel: Record<number, any[]> = {};
   for (const s of spells) {
     if (!byLevel[s.level]) byLevel[s.level] = [];
-    byLevel[s.level].push(s);
+    byLevel[s.level]!.push(s);
   }
 
   for (const [lvl, list] of Object.entries(byLevel).sort(([a],[b]) => Number(a) - Number(b))) {
@@ -496,7 +497,7 @@ function renderFeatures(el: HTMLElement, ctx: MarkdownPostProcessorContext) {
   const bySource: Record<string, string[]> = {};
   for (const f of features) {
     if (!bySource[f.source]) bySource[f.source] = [];
-    bySource[f.source].push(f.name);
+    bySource[f.source]!.push(f.name);
   }
 
   for (const [source, names] of Object.entries(bySource)) {

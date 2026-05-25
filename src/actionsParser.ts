@@ -155,7 +155,7 @@ export function renderActionsNote(charName: string, actions: Action[]): string {
   const byType: Record<string, Action[]> = {};
   for (const a of actions) {
     if (!byType[a.type]) byType[a.type] = [];
-    byType[a.type].push(a);
+    byType[a.type]!.push(a);
   }
 
   const order = ["Attack", "Save", "Action", "Bonus Action", "Reaction", "Other"];

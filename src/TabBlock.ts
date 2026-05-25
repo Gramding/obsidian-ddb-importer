@@ -193,7 +193,7 @@ async function renderFeaturesTab(container: HTMLElement, app: App, basePath: str
     return;
   }
 
-  const features = await Promise.all(files.map(async f => ({
+  const features: any[] = await Promise.all(files.map(async f => ({
     ...await readFrontmatter(app, f),
     _content: await app.vault.cachedRead(f),
     _path: f.path,
