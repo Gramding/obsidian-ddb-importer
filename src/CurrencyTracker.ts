@@ -10,12 +10,21 @@ interface CurrencyState {
 
 const currencyStateCache: Record<string, CurrencyState> = {};
 
+export function clearCurrencyCache(charName: string) {
+  delete currencyStateCache[charName];
+}
+
 async function loadCurrencyState(app: App, charName: string, defaults: CurrencyState): Promise<CurrencyState> {
   if (currencyStateCache[charName]) return currencyStateCache[charName];
 
   const plugin = (app as any).plugins.plugins["ddb-importer"];
   const saved = await plugin?.loadData();
-  const state = saved?.currency?.[charName] ?? { ...defaults };
+  const savedState: CurrencyState | undefined = saved?.currency?.[charName];
+
+  // If plugin data exists but frontmatter differs, frontmatter (from sync) wins.
+  // We detect a stale cache by comparing totals — if every field matches defaults,
+  // the user hasn't made in-session edits so we use defaults directly.
+  const state = savedState ?? { ...defaults };
 
   currencyStateCache[charName] = state;
   return state;

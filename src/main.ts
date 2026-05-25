@@ -9,6 +9,7 @@ import { parseFeatures, renderFeatureFiles, renderFeaturesBase } from "./feature
 import { parseActions, renderActionsNote } from "./actionsParser";
 import { renderProficiencyFile } from "./proficienciesParser";
 import { registerBlocks } from "./BlockRenderer";
+import { clearCurrencyCache } from "./CurrencyTracker";
 
 export default class DdbSyncPlugin extends Plugin {
   settings: DdbSyncSettings;
@@ -84,7 +85,13 @@ await this.writeFile(`${root}/${stats.name} - Actions.md`, renderActionsNote(sta
 
 new Notice(`✅ ${stats.name} synced! (${spells.length} spells, ${inventory.length} items, ${features.length} features)`);
 
-
+  // Invalidate saved currency state so the block re-reads from the freshly-synced frontmatter.
+  clearCurrencyCache(stats.name);
+  const pluginData = await this.loadData() ?? {};
+  if (pluginData.currency?.[stats.name]) {
+    delete pluginData.currency[stats.name];
+    await this.saveData(pluginData);
+  }
 
   return stats.name;
 }
