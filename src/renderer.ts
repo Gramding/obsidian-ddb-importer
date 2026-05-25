@@ -130,6 +130,11 @@ con: ${char.abilities.con}
 int: ${char.abilities.int}
 wis: ${char.abilities.wis}
 cha: ${char.abilities.cha}
+cp: ${char.currencies.cp}
+sp: ${char.currencies.sp}
+ep: ${char.currencies.ep}
+gp: ${char.currencies.gp}
+pp: ${char.currencies.pp}
 ---
 # ${char.name}
 
@@ -137,6 +142,8 @@ cha: ${char.abilities.cha}
 \`\`\`ddb-sheet
 \`\`\`
 \`\`\`ddb-tabs
+\`\`\`
+\`\`\`ddb-currency
 \`\`\`
 
 > [!abstract]- Proficiencies & Training

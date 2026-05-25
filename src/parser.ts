@@ -60,6 +60,7 @@ savingThrows: {
   rawClasses: { name: string; level: number }[];
   skillProficiencies: string[];
   consumables: ConsumableItem[];
+  currencies: { cp: number; sp: number; ep: number; gp: number; pp: number };
 }
 
 const ALL_SKILLS = new Set([
@@ -367,6 +368,13 @@ const speedBonus = (Object.values(data.modifiers ?? {}) as any[][])
 const speed = baseSpeed + speedBonus;
   const skillProficiencies = extractSkillProficiencies(data.modifiers ?? {});
   const consumables = extractConsumables(data.actions ?? {}, rawClasses, profBonus, intMod);
+  const currencies = {
+    cp: data.currencies?.cp ?? 0,
+    sp: data.currencies?.sp ?? 0,
+    ep: data.currencies?.ep ?? 0,
+    gp: data.currencies?.gp ?? 0,
+    pp: data.currencies?.pp ?? 0,
+  };
 
 // Passive scores = 10 + skill modifier
 // Skill modifier = ability mod + proficiency if proficient
@@ -527,6 +535,7 @@ const defenses = { resistances, immunities, vulnerabilities, advantages, disadva
     rawClasses,
     skillProficiencies,
     consumables,
+    currencies,
 	passives,
 		savingThrows,
 	proficiencies,

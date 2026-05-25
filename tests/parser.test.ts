@@ -557,6 +557,25 @@ describe("speed", () => {
 });
 
 // ─────────────────────────────────────────────
+// Currency Extraction
+// ─────────────────────────────────────────────
+describe("currencies", () => {
+  it("extracts all five denominations when present", () => {
+    const data = baseChar({ currencies: { cp: 10, sp: 5, ep: 2, gp: 100, pp: 3 } });
+    expect(parseCharacter(data).currencies).toEqual({ cp: 10, sp: 5, ep: 2, gp: 100, pp: 3 });
+  });
+
+  it("defaults all denominations to 0 when currencies key is absent", () => {
+    expect(parseCharacter(baseChar()).currencies).toEqual({ cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 });
+  });
+
+  it("defaults missing denominations to 0 when only some are present", () => {
+    const data = baseChar({ currencies: { gp: 50 } });
+    expect(parseCharacter(data).currencies).toEqual({ cp: 0, sp: 0, ep: 0, gp: 50, pp: 0 });
+  });
+});
+
+// ─────────────────────────────────────────────
 // mod() helper
 // ─────────────────────────────────────────────
 import { mod } from "../src/parser";
