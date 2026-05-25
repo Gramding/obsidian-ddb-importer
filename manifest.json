@@ -1,7 +1,7 @@
 {
 	"id": "ddb-importer",
 	"name": "DDB Importer",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "1.9.2",
 	"description": "Sync your D&D Beyond character sheets into Obsidian, including stats, spells, inventory, and more.",
 	"author": "Gramding",
