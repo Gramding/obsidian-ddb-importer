@@ -120,36 +120,36 @@ new Notice(`✅ ${stats.name} synced! (${spells.length} spells, ${inventory.leng
 async downloadPortrait(data: any, basePath: string, charName: string): Promise<string | null> {
   try {
     const avatarUrl: string | null = data.decorations?.avatarUrl ?? null;
-    console.log("DDB Portrait: avatarUrl =", avatarUrl);
+    console.debug("DDB Portrait: avatarUrl =", avatarUrl);
     if (!avatarUrl) {
-      console.log("DDB Portrait: no avatarUrl found");
+      console.debug("DDB Portrait: no avatarUrl found");
       return null;
     }
 
     const cleanUrl = avatarUrl.split("?")[0] ?? avatarUrl;
-    console.log("DDB Portrait: fetching", cleanUrl);
+    console.debug("DDB Portrait: fetching", cleanUrl);
 
     const response = await requestUrl({ url: cleanUrl, method: "GET" });
-    console.log("DDB Portrait: response status", response.status);
-    console.log("DDB Portrait: arrayBuffer size", response.arrayBuffer.byteLength);
+    console.debug("DDB Portrait: response status", response.status);
+    console.debug("DDB Portrait: arrayBuffer size", response.arrayBuffer.byteLength);
 
     const ext = cleanUrl.split(".").pop()?.toLowerCase() ?? "jpg";
     const portraitPath = `${basePath}/portrait.${ext}`;
-    console.log("DDB Portrait: writing to", portraitPath);
+    console.debug("DDB Portrait: writing to", portraitPath);
 
     const existing = this.app.vault.getAbstractFileByPath(portraitPath);
     if (existing instanceof TFile) {
       await this.app.vault.modifyBinary(existing, response.arrayBuffer);
     } else {
       const folder = portraitPath.substring(0, portraitPath.lastIndexOf("/"));
-      console.log("DDB Portrait: creating folder", folder);
+      console.debug("DDB Portrait: creating folder", folder);
       if (folder) await this.app.vault.createFolder(folder).catch((e) => {
-        console.log("DDB Portrait: folder already exists or error", e);
+        console.debug("DDB Portrait: folder already exists or error", e);
       });
       await this.app.vault.createBinary(portraitPath, response.arrayBuffer);
     }
 
-    console.log("DDB Portrait: done, path =", portraitPath);
+    console.debug("DDB Portrait: done, path =", portraitPath);
     return portraitPath;
   } catch (e) {
     console.error("DDB Portrait: download failed", e);
