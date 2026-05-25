@@ -1,5 +1,6 @@
 import { MarkdownPostProcessorContext, Plugin, App } from "obsidian";
-import { renderHpTracker } from "./HpTracker"
+import { renderHpTracker } from "./HpTracker";
+import { renderCurrencyTracker } from "./CurrencyTracker";
 import { renderTabBlock } from "./TabBlock";
 
 export interface CharacterFrontmatter {
@@ -30,6 +31,11 @@ export interface CharacterFrontmatter {
   portrait: string | null;
   synced_at: string;
   inspiration: boolean;
+  cp: number;
+  sp: number;
+  ep: number;
+  gp: number;
+  pp: number;
   [key: string]: any;
 }
 
@@ -118,8 +124,9 @@ export function registerBlocks(plugin: Plugin) {
   plugin.registerMarkdownCodeBlockProcessor("ddb-consumables", (src, el, ctx) => renderConsumables(el, ctx));
   // Master block — renders everything in two-column layout
   plugin.registerMarkdownCodeBlockProcessor("ddb-sheet",       (src, el, ctx) => renderSheet(el, ctx));
-  plugin.registerMarkdownCodeBlockProcessor("ddb-hp", (src, el, ctx) => renderHpTracker(el, ctx));
-  plugin.registerMarkdownCodeBlockProcessor("ddb-tabs", (src, el, ctx) => renderTabBlock(el, ctx));
+  plugin.registerMarkdownCodeBlockProcessor("ddb-hp",       (src, el, ctx) => renderHpTracker(el, ctx));
+  plugin.registerMarkdownCodeBlockProcessor("ddb-currency", (src, el, ctx) => renderCurrencyTracker(el, ctx));
+  plugin.registerMarkdownCodeBlockProcessor("ddb-tabs",     (src, el, ctx) => renderTabBlock(el, ctx));
 }
 
 // ─── Master Sheet ────────────────────────────────────────────────────────────
