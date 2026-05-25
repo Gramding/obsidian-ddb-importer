@@ -4,6 +4,8 @@ interface HpState {
   current: number;
   temp: number;
   maxOverride: number | null;
+  hitDiceRemaining: Record<string, number>;
+  deathSaves: { successes: number; failures: number };
 }
 
 const hpStateCache: Record<string, HpState> = {};
@@ -17,6 +19,8 @@ async function loadHpState(app: App, charName: string, defaultMax: number): Prom
     current: defaultMax,
     temp: 0,
     maxOverride: null,
+    hitDiceRemaining: {},
+    deathSaves: { successes: 0, failures: 0 },
   };
 
   hpStateCache[charName] = state;
@@ -41,19 +45,32 @@ export function renderHpTracker(el: HTMLElement, ctx: MarkdownPostProcessorConte
 
   const charName: string = fm.name ?? "unknown";
   const hpMax: number    = fm.hp_max ?? 0;
+  const hitDiceInfo: { die: string; total: number; className: string }[] = fm.hit_dice ?? [];
 
   el.style.cssText = "font-family:var(--font-interface); font-size:0.9em";
-
-  // Render placeholder while loading
   el.createDiv({ text: "Loading HP..." }).style.cssText = "color:var(--text-muted); font-size:0.85em";
 
   loadHpState(app, charName, hpMax).then(state => {
+    // Seed hitDiceRemaining for any class not yet tracked
+    for (const hd of hitDiceInfo) {
+      if (!(hd.className in state.hitDiceRemaining)) {
+        state.hitDiceRemaining[hd.className] = hd.total;
+      }
+    }
+    if (!state.deathSaves) state.deathSaves = { successes: 0, failures: 0 };
     el.empty();
-    buildHpUi(el, app, charName, hpMax, state);
+    buildHpUi(el, app, charName, hpMax, hitDiceInfo, state);
   });
 }
 
-function buildHpUi(el: HTMLElement, app: App, charName: string, hpMax: number, state: HpState) {
+function buildHpUi(
+  el: HTMLElement,
+  app: App,
+  charName: string,
+  hpMax: number,
+  hitDiceInfo: { die: string; total: number; className: string }[],
+  state: HpState,
+) {
   const effectiveMax = state.maxOverride ?? hpMax;
 
   // ── Bar ──────────────────────────────────────────────────────────────────
@@ -133,7 +150,11 @@ function buildHpUi(el: HTMLElement, app: App, charName: string, hpMax: number, s
   inputSection.appendChild(inputGroup(
     "Healing", "Amount", "+", "var(--color-green)",
     (val) => {
+      const wasDown = state.current === 0;
       state.current = Math.min(effectiveMax, state.current + val);
+      if (wasDown && state.current > 0) {
+        state.deathSaves = { successes: 0, failures: 0 };
+      }
       persist();
     }
   ));
@@ -183,11 +204,87 @@ function buildHpUi(el: HTMLElement, app: App, charName: string, hpMax: number, s
     persist();
   };
 
+  // ── Hit Dice ─────────────────────────────────────────────────────────────
+  if (hitDiceInfo.length > 0) {
+    const hdHeader = el.createDiv();
+    hdHeader.style.cssText = "font-size:0.8em; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); border-bottom:1px solid var(--background-modifier-border); padding-bottom:2px; margin:8px 0 4px 0";
+    hdHeader.textContent = "Hit Dice";
+
+    for (const hd of hitDiceInfo) {
+      const remaining = state.hitDiceRemaining[hd.className] ?? hd.total;
+      const row = el.createDiv();
+      row.style.cssText = "display:grid; grid-template-columns:1fr auto auto; gap:5px; align-items:center; padding:3px 0; border-bottom:1px solid var(--background-modifier-border-hover)";
+
+      row.createDiv({ text: `${hd.className} (${hd.die}): ${remaining} / ${hd.total}` }).style.cssText = "font-size:0.88em";
+
+      const useBtn = row.createEl("button", { text: "Use" });
+      useBtn.style.cssText = "padding:2px 7px; border:none; border-radius:3px; background:var(--color-red); color:white; cursor:pointer; font-size:0.8em; font-weight:700";
+      useBtn.onclick = () => {
+        state.hitDiceRemaining[hd.className] = Math.max(0, remaining - 1);
+        persist();
+      };
+
+      const restBtn = row.createEl("button", { text: "↺ Rest" });
+      restBtn.style.cssText = "padding:2px 7px; border:none; border-radius:3px; background:var(--color-blue); color:white; cursor:pointer; font-size:0.8em; font-weight:700";
+      restBtn.title = `Recover ${Math.floor(hd.total / 2)} hit dice (short rest)`;
+      restBtn.onclick = () => {
+        state.hitDiceRemaining[hd.className] = Math.min(hd.total, remaining + Math.floor(hd.total / 2));
+        persist();
+      };
+    }
+  }
+
+  // ── Death Saves ───────────────────────────────────────────────────────────
+  if (state.current === 0) {
+    const dsHeader = el.createDiv();
+    dsHeader.style.cssText = "font-size:0.8em; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--color-red); border-bottom:1px solid var(--background-modifier-border); padding-bottom:2px; margin:8px 0 4px 0";
+    dsHeader.textContent = "Death Saving Throws";
+
+    const { successes, failures } = state.deathSaves;
+
+    if (successes >= 3) {
+      const msg = el.createDiv({ text: "✓ Stable" });
+      msg.style.cssText = "color:var(--color-green); font-weight:700; font-size:0.9em; padding:4px 0";
+    } else if (failures >= 3) {
+      const msg = el.createDiv({ text: "✕ Dead" });
+      msg.style.cssText = "color:var(--color-red); font-weight:700; font-size:0.9em; padding:4px 0";
+    } else {
+      function saveDots(count: number, filled: number, color: string, onToggle: (n: number) => void): HTMLElement {
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex; gap:5px; align-items:center";
+        for (let i = 0; i < count; i++) {
+          const dot = row.createEl("span");
+          const active = i < filled;
+          dot.style.cssText = `width:16px; height:16px; border-radius:50%; cursor:pointer; border:2px solid ${color}; background:${active ? color : "transparent"}; display:inline-block; flex-shrink:0`;
+          dot.title = active ? "Click to unmark" : "Click to mark";
+          dot.onclick = () => { onToggle(active ? i : i + 1); };
+        }
+        return row;
+      }
+
+      const succRow = el.createDiv();
+      succRow.style.cssText = "display:flex; align-items:center; gap:8px; padding:3px 0";
+      succRow.createEl("span", { text: "Success" }).style.cssText = "font-size:0.8em; color:var(--text-muted); min-width:54px";
+      succRow.appendChild(saveDots(3, successes, "var(--color-green)", (n) => {
+        state.deathSaves.successes = n;
+        persist();
+      }));
+
+      const failRow = el.createDiv();
+      failRow.style.cssText = "display:flex; align-items:center; gap:8px; padding:3px 0";
+      failRow.createEl("span", { text: "Failure" }).style.cssText = "font-size:0.8em; color:var(--text-muted); min-width:54px";
+      failRow.appendChild(saveDots(3, failures, "var(--color-red)", (n) => {
+        state.deathSaves.failures = n;
+        persist();
+      }));
+    }
+  }
+
   // ── Persist & re-render ──────────────────────────────────────────────────
   function persist() {
     saveHpState(app, charName, state).then(() => {
       el.empty();
-      buildHpUi(el, app, charName, hpMax, state);
+      buildHpUi(el, app, charName, hpMax, hitDiceInfo, state);
     });
   }
 }
