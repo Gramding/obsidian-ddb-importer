@@ -127,6 +127,7 @@ ep: ${char.currencies.ep}
 gp: ${char.currencies.gp}
 pp: ${char.currencies.pp}
 hit_dice: ${JSON.stringify(char.hitDice)}
+spell_slots: ${JSON.stringify(char.spellSlots)}
 ---
 # ${char.name}
 

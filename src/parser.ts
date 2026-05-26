@@ -11,6 +11,11 @@ export interface ConsumableItem {
   resetOn: string | null;
 }
 
+export interface SpellSlot {
+  level: number;
+  total: number;
+}
+
 export interface CharacterStats {
   passives: {
     perception: number;
@@ -61,6 +66,7 @@ savingThrows: {
   consumables: ConsumableItem[];
   currencies: { cp: number; sp: number; ep: number; gp: number; pp: number };
   hitDice: { die: string; total: number; className: string }[];
+  spellSlots: SpellSlot[];
 }
 
 const ALL_SKILLS = new Set([
@@ -264,6 +270,52 @@ function extractConsumables(
   }
 
   return items;
+}
+
+const CASTER_FRACTION: Record<string, "full" | "half" | "artificer" | "pact"> = {
+  bard: "full", cleric: "full", druid: "full", sorcerer: "full", wizard: "full",
+  paladin: "half", ranger: "half",
+  artificer: "artificer",
+  warlock: "pact",
+};
+
+// Warlock pact magic: [slotLevel, slotCount] indexed by warlock level (1-based)
+const PACT_MAGIC: [number, number][] = [
+  [1,1],[1,2],[2,2],[2,2],[3,2],[3,2],[4,2],[4,2],[5,2],[5,2],
+  [5,3],[5,3],[5,3],[5,3],[5,3],[5,3],[5,4],[5,4],[5,4],[5,4],
+];
+
+function extractSpellSlots(rawClasses: { name: string; level: number }[]): SpellSlot[] {
+  let effectiveCasterLevel = 0;
+  let warlockLevel = 0;
+
+  for (const cls of rawClasses) {
+    const name = cls.name.toLowerCase();
+    const type = CASTER_FRACTION[name];
+    if (type === "full")       effectiveCasterLevel += cls.level;
+    else if (type === "half")  effectiveCasterLevel += Math.floor(cls.level / 2);
+    else if (type === "artificer") effectiveCasterLevel += Math.ceil(cls.level / 2);
+    else if (type === "pact")  warlockLevel = cls.level;
+  }
+
+  const slots: SpellSlot[] = [];
+
+  if (effectiveCasterLevel > 0) {
+    const table = FULL_CASTER_SPELL_SLOTS[effectiveCasterLevel] ?? [];
+    table.forEach((count, i) => {
+      if (count > 0) slots.push({ level: i + 1, total: count });
+    });
+  }
+
+  if (warlockLevel > 0) {
+    const [pactLevel, pactCount] = PACT_MAGIC[warlockLevel - 1] ?? [1, 1];
+    const existing = slots.find(s => s.level === pactLevel);
+    if (existing) existing.total += pactCount;
+    else          slots.push({ level: pactLevel, total: pactCount });
+    slots.sort((a, b) => a.level - b.level);
+  }
+
+  return slots;
 }
 
 const ABILITY_KEY_MAP: Record<string, "str" | "dex" | "con" | "int" | "wis" | "cha"> = {
@@ -542,6 +594,7 @@ const defenses = { resistances, immunities, vulnerabilities, advantages, disadva
     consumables,
     currencies,
     hitDice,
+    spellSlots: extractSpellSlots(rawClasses),
 	passives,
 		savingThrows,
 	proficiencies,

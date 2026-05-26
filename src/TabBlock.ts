@@ -1,4 +1,5 @@
 import { MarkdownPostProcessorContext, App, TFile, TFolder, MarkdownRenderer } from "obsidian";
+import { renderSpellSlotsSection } from "./SpellSlotTracker";
 
 async function getFilesInFolder(app: App, folderPath: string): Promise<TFile[]> {
   const folder = app.vault.getAbstractFileByPath(folderPath);
@@ -14,6 +15,16 @@ async function readFrontmatter(app: App, file: TFile): Promise<Record<string, an
 // ─── Spells Tab ──────────────────────────────────────────────────────────────
 
 async function renderSpellsTab(container: HTMLElement, app: App, basePath: string, sourcePath: string) {
+  // Spell slot tracker at the top of the tab
+  const charFm = app.metadataCache.getCache(sourcePath)?.frontmatter;
+  if (charFm) {
+    const slots: { level: number; total: number }[] = charFm.spell_slots ?? [];
+    const charName: string = charFm.name ?? "Unknown";
+    if (slots.length > 0) {
+      await renderSpellSlotsSection(container, app, charName, slots);
+    }
+  }
+
   const files = await getFilesInFolder(app, `${basePath}/Spells`);
   if (!files.length) {
     container.createDiv({ text: "No spells found." }).style.cssText = "color:var(--text-muted); padding:8px";

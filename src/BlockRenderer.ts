@@ -37,6 +37,7 @@ export interface CharacterFrontmatter {
   gp: number;
   pp: number;
   hit_dice: { die: string; total: number; className: string }[];
+  spell_slots: { level: number; total: number }[];
   [key: string]: any;
 }
 
