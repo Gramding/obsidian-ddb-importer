@@ -286,29 +286,42 @@ const PACT_MAGIC: [number, number][] = [
 ];
 
 function extractSpellSlots(rawClasses: { name: string; level: number }[]): SpellSlot[] {
-  let effectiveCasterLevel = 0;
-  let warlockLevel = 0;
-
-  for (const cls of rawClasses) {
-    const name = cls.name.toLowerCase();
-    const type = CASTER_FRACTION[name];
-    if (type === "full")       effectiveCasterLevel += cls.level;
-    else if (type === "half")  effectiveCasterLevel += Math.floor(cls.level / 2);
-    else if (type === "artificer") effectiveCasterLevel += Math.ceil(cls.level / 2);
-    else if (type === "pact")  warlockLevel = cls.level;
-  }
+  const nonWarlockCasters = rawClasses.filter(c => {
+    const t = CASTER_FRACTION[c.name.toLowerCase()];
+    return t && t !== "pact";
+  });
+  const warlock = rawClasses.find(c => CASTER_FRACTION[c.name.toLowerCase()] === "pact");
 
   const slots: SpellSlot[] = [];
 
-  if (effectiveCasterLevel > 0) {
-    const table = FULL_CASTER_SPELL_SLOTS[effectiveCasterLevel] ?? [];
-    table.forEach((count, i) => {
+  if (nonWarlockCasters.length === 1) {
+    // Single caster class — use its own table directly (multiclass fraction rules don't apply)
+    const cls = nonWarlockCasters[0]!;
+    const type = CASTER_FRACTION[cls.name.toLowerCase()];
+    const table =
+      type === "full"      ? FULL_CASTER_SPELL_SLOTS :
+      type === "half"      ? HALF_CASTER_SPELL_SLOTS :
+      /* artificer */        ARTIFICER_SPELL_SLOTS;
+    (table[cls.level] ?? []).forEach((count, i) => {
+      if (count > 0) slots.push({ level: i + 1, total: count });
+    });
+  } else if (nonWarlockCasters.length > 1) {
+    // Multiclass — sum effective levels and use full-caster table
+    let effectiveLevel = 0;
+    for (const cls of nonWarlockCasters) {
+      const type = CASTER_FRACTION[cls.name.toLowerCase()];
+      if      (type === "full")      effectiveLevel += cls.level;
+      else if (type === "half")      effectiveLevel += Math.floor(cls.level / 2);
+      else if (type === "artificer") effectiveLevel += Math.ceil(cls.level / 2);
+    }
+    (FULL_CASTER_SPELL_SLOTS[effectiveLevel] ?? []).forEach((count, i) => {
       if (count > 0) slots.push({ level: i + 1, total: count });
     });
   }
 
-  if (warlockLevel > 0) {
-    const [pactLevel, pactCount] = PACT_MAGIC[warlockLevel - 1] ?? [1, 1];
+  // Warlock pact magic is always separate — stacks on top at the appropriate slot level
+  if (warlock) {
+    const [pactLevel, pactCount] = PACT_MAGIC[warlock.level - 1] ?? [1, 1];
     const existing = slots.find(s => s.level === pactLevel);
     if (existing) existing.total += pactCount;
     else          slots.push({ level: pactLevel, total: pactCount });

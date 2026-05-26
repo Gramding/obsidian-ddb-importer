@@ -393,6 +393,82 @@ describe("spell slot consumables", () => {
 });
 
 // ─────────────────────────────────────────────
+// Spell Slots (tracker — spellSlots property)
+// ─────────────────────────────────────────────
+describe("spellSlots tracker", () => {
+  it("non-caster returns empty array", () => {
+    expect(parseCharacter(baseChar()).spellSlots).toEqual([]);
+  });
+
+  it("full caster (wizard) level 5: 4×L1 + 3×L2 + 2×L3", () => {
+    const data = baseChar({
+      classes: [{ definition: { name: "Wizard", classFeatures: [] }, level: 5, subclassDefinition: null }],
+    });
+    expect(parseCharacter(data).spellSlots).toEqual([
+      { level: 1, total: 4 },
+      { level: 2, total: 3 },
+      { level: 3, total: 2 },
+    ]);
+  });
+
+  it("half caster (paladin) level 5: 4×L1 + 2×L2 (not reduced via multiclass fraction)", () => {
+    const data = baseChar({
+      classes: [{ definition: { name: "Paladin", classFeatures: [] }, level: 5, subclassDefinition: null }],
+    });
+    expect(parseCharacter(data).spellSlots).toEqual([
+      { level: 1, total: 4 },
+      { level: 2, total: 2 },
+    ]);
+  });
+
+  it("artificer level 5: 4×L1 + 2×L2", () => {
+    const data = baseChar({
+      classes: [{ definition: { name: "Artificer", classFeatures: [] }, level: 5, subclassDefinition: null }],
+    });
+    expect(parseCharacter(data).spellSlots).toEqual([
+      { level: 1, total: 4 },
+      { level: 2, total: 2 },
+    ]);
+  });
+
+  it("warlock level 5: 2×L3 pact slots only", () => {
+    const data = baseChar({
+      classes: [{ definition: { name: "Warlock", classFeatures: [] }, level: 5, subclassDefinition: null }],
+    });
+    expect(parseCharacter(data).spellSlots).toEqual([{ level: 3, total: 2 }]);
+  });
+
+  it("multiclass wizard 3 / paladin 5: effective level 2+3=5 → FULL_CASTER[5]", () => {
+    const data = baseChar({
+      classes: [
+        { definition: { name: "Wizard",  classFeatures: [] }, level: 3, subclassDefinition: null },
+        { definition: { name: "Paladin", classFeatures: [] }, level: 5, subclassDefinition: null },
+      ],
+    });
+    // effective = 3 (full) + floor(5/2)=2 (half) = 5 → FULL_CASTER[5] = [4,3,2]
+    expect(parseCharacter(data).spellSlots).toEqual([
+      { level: 1, total: 4 },
+      { level: 2, total: 3 },
+      { level: 3, total: 2 },
+    ]);
+  });
+
+  it("warlock 3 / wizard 3: wizard slots + pact slots stacked at same level", () => {
+    const data = baseChar({
+      classes: [
+        { definition: { name: "Wizard",  classFeatures: [] }, level: 3, subclassDefinition: null },
+        { definition: { name: "Warlock", classFeatures: [] }, level: 3, subclassDefinition: null },
+      ],
+    });
+    // Wizard alone: FULL[3] = [4,2]; warlock3 pact: L2, 2 slots → stacks at L2: total 4
+    expect(parseCharacter(data).spellSlots).toEqual([
+      { level: 1, total: 4 },
+      { level: 2, total: 4 },
+    ]);
+  });
+});
+
+// ─────────────────────────────────────────────
 // Consumables — Limited-Use Actions
 // ─────────────────────────────────────────────
 describe("limited-use action consumables", () => {

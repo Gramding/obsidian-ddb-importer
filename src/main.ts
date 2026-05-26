@@ -179,7 +179,9 @@ async downloadPortrait(data: any, basePath: string, charName: string): Promise<s
 }  }
 
   async saveSettings() {
-    await this.saveData(this.settings);
+    // Merge only the settings fields so tracker state (hp/currency/spellSlots) is preserved.
+    const current = (await this.loadData()) ?? {};
+    await this.saveData({ ...current, characters: this.settings.characters });
   }
 }
 
