@@ -14,7 +14,7 @@ concurrency:
 jobs:
   release:
     # Run on tag pushes, manual dispatch, OR main commits whose message starts with "chore: release"
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') || startsWith(github.event.head_commit.message, 'chore: release')
+    if: "github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v') || startsWith(github.event.head_commit.message, 'chore: release')"
     runs-on: ubuntu-latest
     permissions:
       contents: write
