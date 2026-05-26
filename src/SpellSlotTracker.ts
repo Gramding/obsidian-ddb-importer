@@ -5,6 +5,40 @@ interface SpellSlotState {
   used: Record<number, number>;
 }
 
+// ─── Concentration ────────────────────────────────────────────────────────────
+
+interface ConcentrationState { spell: string | null; }
+const concentrationCache: Record<string, ConcentrationState> = {};
+
+async function loadConcentrationState(app: App, charName: string): Promise<ConcentrationState> {
+  if (concentrationCache[charName]) return concentrationCache[charName];
+  const plugin = (app as any).plugins.plugins["ddb-importer"];
+  const saved = await plugin?.loadData();
+  const state: ConcentrationState = saved?.concentration?.[charName] ?? { spell: null };
+  concentrationCache[charName] = state;
+  return state;
+}
+
+async function saveConcentrationState(app: App, charName: string, state: ConcentrationState) {
+  concentrationCache[charName] = state;
+  const plugin = (app as any).plugins.plugins["ddb-importer"];
+  if (!plugin) return;
+  const saved = (await plugin.loadData()) ?? {};
+  if (!saved.concentration) saved.concentration = {};
+  saved.concentration[charName] = state;
+  await plugin.saveData(saved);
+}
+
+export async function getConcentration(app: App, charName: string): Promise<string | null> {
+  return (await loadConcentrationState(app, charName)).spell;
+}
+
+export async function setConcentration(app: App, charName: string, spellName: string | null): Promise<void> {
+  await saveConcentrationState(app, charName, { spell: spellName });
+}
+
+// ─── Spell Slot State ─────────────────────────────────────────────────────────
+
 const slotStateCache: Record<string, SpellSlotState> = {};
 
 async function loadSlotState(app: App, charName: string): Promise<SpellSlotState> {

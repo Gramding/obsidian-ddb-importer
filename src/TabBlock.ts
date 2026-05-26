@@ -1,5 +1,5 @@
 import { MarkdownPostProcessorContext, App, TFile, TFolder, MarkdownRenderer } from "obsidian";
-import { renderSpellSlotsSection } from "./SpellSlotTracker";
+import { renderSpellSlotsSection, getConcentration, setConcentration } from "./SpellSlotTracker";
 
 async function getFilesInFolder(app: App, folderPath: string): Promise<TFile[]> {
   const folder = app.vault.getAbstractFileByPath(folderPath);
@@ -15,14 +15,28 @@ async function readFrontmatter(app: App, file: TFile): Promise<Record<string, an
 // ─── Spells Tab ──────────────────────────────────────────────────────────────
 
 async function renderSpellsTab(container: HTMLElement, app: App, basePath: string, sourcePath: string) {
-  // Spell slot tracker at the top of the tab
-  const charFm = app.metadataCache.getCache(sourcePath)?.frontmatter;
+  const charFm   = app.metadataCache.getCache(sourcePath)?.frontmatter;
+  const charName = charFm?.name ?? "Unknown";
+
+  // Spell slot tracker
   if (charFm) {
     const slots: { level: number; total: number }[] = charFm.spell_slots ?? [];
-    const charName: string = charFm.name ?? "Unknown";
-    if (slots.length > 0) {
-      await renderSpellSlotsSection(container, app, charName, slots);
-    }
+    if (slots.length > 0) await renderSpellSlotsSection(container, app, charName, slots);
+  }
+
+  // Concentration banner
+  const concSpell = await getConcentration(app, charName);
+  if (concSpell) {
+    const banner = container.createDiv();
+    banner.style.cssText = "display:flex; justify-content:space-between; align-items:center; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.4); border-radius:5px; padding:4px 10px; font-size:0.85em; font-weight:600; margin-bottom:6px; color:var(--text-normal)";
+    banner.createEl("span", { text: `Concentrating: ${concSpell}` });
+    const clearBtn = banner.createEl("button", { text: "End" });
+    clearBtn.style.cssText = "background:none; border:1px solid rgba(139,92,246,0.5); border-radius:4px; color:var(--text-muted); cursor:pointer; font-size:0.75em; padding:1px 6px; font-weight:600";
+    clearBtn.onclick = async () => {
+      await setConcentration(app, charName, null);
+      container.empty();
+      await renderSpellsTab(container, app, basePath, sourcePath);
+    };
   }
 
   const files = await getFilesInFolder(app, `${basePath}/Spells`);
@@ -58,10 +72,18 @@ async function renderSpellsTab(container: HTMLElement, app: App, basePath: strin
 
     const tbody = table.createEl("tbody");
     for (const s of list) {
+      const isPrepared      = s.prepared !== false;
+      const isConcentrating = s.name && s.name === concSpell;
+
       const tr = tbody.createEl("tr");
-      tr.style.cssText = "border-bottom:1px solid var(--background-modifier-border-hover)";
-      tr.onmouseenter = () => tr.style.background = "var(--background-modifier-hover)";
-      tr.onmouseleave = () => tr.style.background = "";
+      tr.style.cssText = [
+        "border-bottom:1px solid var(--background-modifier-border-hover);",
+        isPrepared ? "" : "opacity:0.45;",
+        isConcentrating ? "background:rgba(139,92,246,0.08);" : "",
+      ].join(" ");
+      tr.title = isPrepared ? "" : "Not currently prepared";
+      tr.onmouseenter = () => tr.style.background = isConcentrating ? "rgba(139,92,246,0.15)" : "var(--background-modifier-hover)";
+      tr.onmouseleave = () => tr.style.background = isConcentrating ? "rgba(139,92,246,0.08)" : "";
 
       const vals = [
         s.name ?? "—",
@@ -79,7 +101,6 @@ async function renderSpellsTab(container: HTMLElement, app: App, basePath: strin
         td.style.cssText = "padding:3px 6px; white-space:nowrap";
 
         if (idx === 0) {
-          // Name as wikilink
           const spellName = s.name ?? "Unknown";
           const safeName  = spellName.replace(/[\\/:*?"<>|]/g, "");
           const linkPath  = `${basePath}/Spells/${safeName}`;
@@ -95,7 +116,16 @@ async function renderSpellsTab(container: HTMLElement, app: App, basePath: strin
           };
 
           if (s.concentration) {
-            td.createEl("span", { text: " C" }).style.cssText = "color:var(--text-faint); font-size:0.8em";
+            const cMarker = td.createEl("span", { text: " C" });
+            cMarker.style.cssText = `cursor:pointer; font-size:0.8em; font-weight:${isConcentrating ? "700" : "400"}; color:${isConcentrating ? "rgb(139,92,246)" : "var(--text-faint)"}`;
+            cMarker.title = isConcentrating ? "End concentration" : "Concentrate on this spell";
+            cMarker.onclick = async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              await setConcentration(app, charName, isConcentrating ? null : spellName);
+              container.empty();
+              await renderSpellsTab(container, app, basePath, sourcePath);
+            };
           }
           if (s.ritual) {
             td.createEl("span", { text: " R" }).style.cssText = "color:var(--text-faint); font-size:0.8em";
@@ -125,6 +155,13 @@ async function renderInventoryTab(container: HTMLElement, app: App, basePath: st
 
   const equipped   = items.filter(i => i.equipped);
   const unequipped = items.filter(i => !i.equipped);
+
+  const attunedCount = items.filter(i => i.attuned).length;
+  if (attunedCount > 0 || items.some(i => i.requires_attunement)) {
+    const attRow = container.createDiv();
+    attRow.style.cssText = `display:flex; justify-content:flex-end; font-size:0.78em; font-weight:600; color:${attunedCount > 3 ? "var(--color-red)" : "var(--text-muted)"}; margin-bottom:4px`;
+    attRow.setText(`Attunement: ${attunedCount}/3`);
+  }
 
   for (const [groupName, group] of [["Equipped", equipped], ["Carried", unequipped]] as [string, any[]][]) {
     if (!group.length) continue;

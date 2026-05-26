@@ -3,6 +3,7 @@ import { renderHpTracker } from "./HpTracker";
 import { renderCurrencyTracker } from "./CurrencyTracker";
 import { renderTabBlock } from "./TabBlock";
 import { renderConditionTracker, renderConditionsBlock } from "./ConditionTracker";
+import { renderConsumablesBlock } from "./ConsumableTracker";
 
 export interface CharacterFrontmatter {
   name: string;
@@ -474,6 +475,13 @@ function renderInventory(el: HTMLElement, ctx: MarkdownPostProcessorContext) {
   const equipped   = inventory.filter((i: any) => i.equipped);
   const unequipped = inventory.filter((i: any) => !i.equipped);
 
+  const attuned = inventory.filter((i: any) => i.attuned).length;
+  if (attuned > 0 || inventory.some((i: any) => i.requires_attunement)) {
+    const attRow = el.createDiv();
+    attRow.style.cssText = `display:flex; justify-content:flex-end; font-size:0.75em; margin-bottom:3px; font-weight:600; color:${attuned > 3 ? "var(--color-red)" : "var(--text-muted)"}`;
+    attRow.setText(`Attunement: ${attuned}/3`);
+  }
+
   for (const group of [["Equipped", equipped], ["Carried", unequipped]] as [string, any[]][]) {
     if (!group[1].length) continue;
     const groupHeader = el.createDiv({ text: group[0] });
@@ -524,24 +532,12 @@ function renderConsumables(el: HTMLElement, ctx: MarkdownPostProcessorContext) {
   const consumables: any[] = fm.consumables ?? [];
   if (!consumables.length) return;
 
+  const app      = (window as any).app as App;
+  const charName = fm.name ?? "unknown";
+
   wrap(el);
   el.appendChild(sectionHeader("Resources"));
 
-  for (const c of consumables) {
-    const row = el.createDiv();
-    row.style.cssText = "display:flex; justify-content:space-between; align-items:center; padding:2px 0; border-bottom:1px solid var(--background-modifier-border-hover); gap:6px";
-
-    row.createDiv({ text: c.label }).style.cssText = "flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis";
-
-    const dots = row.createDiv();
-    dots.style.cssText = "display:flex; gap:3px; flex-shrink:0";
-    for (let i = 0; i < (c.uses ?? 0); i++) {
-      const dot = dots.createEl("span");
-      dot.style.cssText = "width:10px; height:10px; border-radius:50%; background:var(--interactive-accent); border:1px solid var(--background-modifier-border); display:inline-block";
-    }
-
-    if (c.reset_on) {
-      row.createEl("span", { text: c.reset_on }).style.cssText = "font-size:0.7em; color:var(--text-faint); flex-shrink:0";
-    }
-  }
+  const contentEl = el.createDiv();
+  renderConsumablesBlock(contentEl, app, charName, consumables);
 }

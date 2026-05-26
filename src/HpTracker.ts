@@ -1,5 +1,6 @@
 import { MarkdownPostProcessorContext, Plugin, App, Notice } from "obsidian";
-import { resetSlotsForLongRest } from "./SpellSlotTracker";
+import { resetSlotsForLongRest, setConcentration } from "./SpellSlotTracker";
+import { resetConsumablesOnRest } from "./ConsumableTracker";
 
 interface HpState {
   current: number;
@@ -46,9 +47,10 @@ export function renderHpTracker(el: HTMLElement, ctx: MarkdownPostProcessorConte
   const fm = cache?.frontmatter;
   if (!fm) { el.setText("No frontmatter."); return; }
 
-  const charName: string = fm.name ?? "unknown";
-  const hpMax: number    = fm.hp_max ?? 0;
+  const charName: string   = fm.name ?? "unknown";
+  const hpMax: number      = fm.hp_max ?? 0;
   const hitDiceInfo: { die: string; total: number; className: string }[] = fm.hit_dice ?? [];
+  const consumables: { label: string; stateKey: string; uses: number; resetOn: string | null }[] = fm.consumables ?? [];
 
   el.style.cssText = "font-family:var(--font-interface); font-size:0.9em";
   el.createDiv({ text: "Loading HP..." }).style.cssText = "color:var(--text-muted); font-size:0.85em";
@@ -63,7 +65,7 @@ export function renderHpTracker(el: HTMLElement, ctx: MarkdownPostProcessorConte
     if (!state.deathSaves) state.deathSaves = { successes: 0, failures: 0 };
     if (state.inspiration === undefined) state.inspiration = false;
     el.empty();
-    buildHpUi(el, app, charName, hpMax, hitDiceInfo, state);
+    buildHpUi(el, app, charName, hpMax, hitDiceInfo, consumables, state);
   });
 }
 
@@ -73,6 +75,7 @@ function buildHpUi(
   charName: string,
   hpMax: number,
   hitDiceInfo: { die: string; total: number; className: string }[],
+  consumables: { label: string; stateKey: string; uses: number; resetOn: string | null }[],
   state: HpState,
 ) {
   const effectiveMax = state.maxOverride ?? hpMax;
@@ -300,21 +303,24 @@ function buildHpUi(
   const shortBtn = restSection.createEl("button", { text: "Short Rest" });
   shortBtn.style.cssText = "flex:1; padding:5px 4px; border:1px solid var(--background-modifier-border); border-radius:5px; background:var(--background-secondary); color:var(--text-muted); cursor:pointer; font-size:0.78em; font-weight:600";
   shortBtn.title = "Spend hit dice above to heal";
-  shortBtn.onclick = () => {
+  shortBtn.onclick = async () => {
     state.deathSaves = { successes: 0, failures: 0 };
+    await resetConsumablesOnRest(app, charName, consumables, "short");
     new Notice("Short rest taken — spend hit dice to heal.");
     persist();
   };
 
   const longBtn = restSection.createEl("button", { text: "Long Rest" });
   longBtn.style.cssText = "flex:1; padding:5px 4px; border:none; border-radius:5px; background:var(--interactive-accent); color:white; cursor:pointer; font-size:0.78em; font-weight:700";
-  longBtn.title = "Restore HP, all spell slots, and hit dice";
+  longBtn.title = "Restore HP, all spell slots, resources, and hit dice";
   longBtn.onclick = async () => {
     state.current = effectiveMax;
     state.temp = 0;
     state.deathSaves = { successes: 0, failures: 0 };
     for (const hd of hitDiceInfo) state.hitDiceRemaining[hd.className] = hd.total;
     await resetSlotsForLongRest(app, charName);
+    await resetConsumablesOnRest(app, charName, consumables, "long");
+    await setConcentration(app, charName, null);
     persist();
   };
 
@@ -322,7 +328,7 @@ function buildHpUi(
   function persist() {
     saveHpState(app, charName, state).then(() => {
       el.empty();
-      buildHpUi(el, app, charName, hpMax, hitDiceInfo, state);
+      buildHpUi(el, app, charName, hpMax, hitDiceInfo, consumables, state);
     });
   }
 }

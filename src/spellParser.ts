@@ -8,6 +8,7 @@ export interface Spell {
   duration: string;
   concentration: boolean;
   ritual: boolean;
+  prepared: boolean;
   components: string;
   description: string;
   source: string;
@@ -147,6 +148,7 @@ function parseSpellEntry(entry: any, source: string, profBonus: number, intMod: 
     duration: parseDuration(def.duration),
     concentration: def.concentration ?? false,
     ritual: def.ritual ?? false,
+    prepared: entry.prepared ?? true,
     components: parseComponents(def.components ?? [], def.componentsDescription ?? ""),
     description,
     source,
@@ -245,6 +247,7 @@ export function parseSpells(data: any, profBonus: number, intMod: number): Spell
       duration: "—",
       concentration: false,
       ritual: false,
+      prepared: true,
       components: "—",
       description: "Subclass granted spell. Full details on D&D Beyond.",
       source: "subclass",
@@ -273,6 +276,7 @@ range: "${s.range}"
 duration: "${s.duration}"
 concentration: ${s.concentration}
 ritual: ${s.ritual}
+prepared: ${s.prepared}
 components: "${s.components}"
 attack_bonus: "${s.attackBonus ?? '—'}"
 save_dc: "${s.saveDc ?? '—'}"
