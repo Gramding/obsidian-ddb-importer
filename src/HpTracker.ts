@@ -1,4 +1,5 @@
-import { MarkdownPostProcessorContext, Plugin, App } from "obsidian";
+import { MarkdownPostProcessorContext, Plugin, App, Notice } from "obsidian";
+import { resetSlotsForLongRest } from "./SpellSlotTracker";
 
 interface HpState {
   current: number;
@@ -6,6 +7,7 @@ interface HpState {
   maxOverride: number | null;
   hitDiceRemaining: Record<string, number>;
   deathSaves: { successes: number; failures: number };
+  inspiration: boolean;
 }
 
 const hpStateCache: Record<string, HpState> = {};
@@ -21,6 +23,7 @@ async function loadHpState(app: App, charName: string, defaultMax: number): Prom
     maxOverride: null,
     hitDiceRemaining: {},
     deathSaves: { successes: 0, failures: 0 },
+    inspiration: false,
   };
 
   hpStateCache[charName] = state;
@@ -58,6 +61,7 @@ export function renderHpTracker(el: HTMLElement, ctx: MarkdownPostProcessorConte
       }
     }
     if (!state.deathSaves) state.deathSaves = { successes: 0, failures: 0 };
+    if (state.inspiration === undefined) state.inspiration = false;
     el.empty();
     buildHpUi(el, app, charName, hpMax, hitDiceInfo, state);
   });
@@ -72,6 +76,15 @@ function buildHpUi(
   state: HpState,
 ) {
   const effectiveMax = state.maxOverride ?? hpMax;
+
+  // ── Inspiration ───────────────────────────────────────────────────────────
+  const inspRow = el.createDiv();
+  inspRow.style.cssText = "display:flex; align-items:center; justify-content:space-between; padding:3px 0; margin-bottom:6px; border-bottom:1px solid var(--background-modifier-border-hover)";
+  inspRow.createEl("span", { text: "Inspiration" }).style.cssText = "font-size:0.82em; color:var(--text-muted)";
+  const inspBtn = inspRow.createEl("span", { text: state.inspiration ? "★" : "☆" });
+  inspBtn.style.cssText = `font-size:1.3em; cursor:pointer; color:${state.inspiration ? "var(--color-yellow)" : "var(--text-faint)"}; user-select:none; line-height:1`;
+  inspBtn.title = state.inspiration ? "Lose inspiration" : "Gain inspiration";
+  inspBtn.onclick = () => { state.inspiration = !state.inspiration; persist(); };
 
   // ── Bar ──────────────────────────────────────────────────────────────────
   const barWrap = el.createDiv();
@@ -279,6 +292,31 @@ function buildHpUi(
       }));
     }
   }
+
+  // ── Rest Buttons ──────────────────────────────────────────────────────────
+  const restSection = el.createDiv();
+  restSection.style.cssText = "display:flex; gap:6px; margin-top:10px";
+
+  const shortBtn = restSection.createEl("button", { text: "Short Rest" });
+  shortBtn.style.cssText = "flex:1; padding:5px 4px; border:1px solid var(--background-modifier-border); border-radius:5px; background:var(--background-secondary); color:var(--text-muted); cursor:pointer; font-size:0.78em; font-weight:600";
+  shortBtn.title = "Spend hit dice above to heal";
+  shortBtn.onclick = () => {
+    state.deathSaves = { successes: 0, failures: 0 };
+    new Notice("Short rest taken — spend hit dice to heal.");
+    persist();
+  };
+
+  const longBtn = restSection.createEl("button", { text: "Long Rest" });
+  longBtn.style.cssText = "flex:1; padding:5px 4px; border:none; border-radius:5px; background:var(--interactive-accent); color:white; cursor:pointer; font-size:0.78em; font-weight:700";
+  longBtn.title = "Restore HP, all spell slots, and hit dice";
+  longBtn.onclick = async () => {
+    state.current = effectiveMax;
+    state.temp = 0;
+    state.deathSaves = { successes: 0, failures: 0 };
+    for (const hd of hitDiceInfo) state.hitDiceRemaining[hd.className] = hd.total;
+    await resetSlotsForLongRest(app, charName);
+    persist();
+  };
 
   // ── Persist & re-render ──────────────────────────────────────────────────
   function persist() {

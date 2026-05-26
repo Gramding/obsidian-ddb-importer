@@ -26,6 +26,17 @@ async function saveSlotState(app: App, charName: string, state: SpellSlotState) 
   await plugin.saveData(saved);
 }
 
+export async function resetSlotsForLongRest(app: App, charName: string): Promise<void> {
+  const state: SpellSlotState = { used: {} };
+  slotStateCache[charName] = state;
+  const plugin = (app as any).plugins.plugins["ddb-importer"];
+  if (!plugin) return;
+  const saved = (await plugin.loadData()) ?? {};
+  if (!saved.spellSlots) saved.spellSlots = {};
+  saved.spellSlots[charName] = state;
+  await plugin.saveData(saved);
+}
+
 export async function renderSpellSlotsSection(
   container: HTMLElement,
   app: App,

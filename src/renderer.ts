@@ -58,6 +58,8 @@ spell_slots: ${JSON.stringify(char.spellSlots)}
 \`\`\`
 \`\`\`ddb-currency
 \`\`\`
+\`\`\`ddb-conditions
+\`\`\`
 
 > [!abstract]- Proficiencies & Training
 > ![[Proficiencies]]

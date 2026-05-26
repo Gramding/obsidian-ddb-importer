@@ -2,6 +2,7 @@ import { MarkdownPostProcessorContext, Plugin, App } from "obsidian";
 import { renderHpTracker } from "./HpTracker";
 import { renderCurrencyTracker } from "./CurrencyTracker";
 import { renderTabBlock } from "./TabBlock";
+import { renderConditionTracker, renderConditionsBlock } from "./ConditionTracker";
 
 export interface CharacterFrontmatter {
   name: string;
@@ -126,9 +127,10 @@ export function registerBlocks(plugin: Plugin) {
   plugin.registerMarkdownCodeBlockProcessor("ddb-consumables", (src, el, ctx) => renderConsumables(el, ctx));
   // Master block — renders everything in two-column layout
   plugin.registerMarkdownCodeBlockProcessor("ddb-sheet",       (src, el, ctx) => renderSheet(el, ctx));
-  plugin.registerMarkdownCodeBlockProcessor("ddb-hp",       (src, el, ctx) => renderHpTracker(el, ctx));
-  plugin.registerMarkdownCodeBlockProcessor("ddb-currency", (src, el, ctx) => renderCurrencyTracker(el, ctx));
-  plugin.registerMarkdownCodeBlockProcessor("ddb-tabs",     (src, el, ctx) => renderTabBlock(el, ctx));
+  plugin.registerMarkdownCodeBlockProcessor("ddb-hp",         (src, el, ctx) => renderHpTracker(el, ctx));
+  plugin.registerMarkdownCodeBlockProcessor("ddb-currency",   (src, el, ctx) => renderCurrencyTracker(el, ctx));
+  plugin.registerMarkdownCodeBlockProcessor("ddb-tabs",       (src, el, ctx) => renderTabBlock(el, ctx));
+  plugin.registerMarkdownCodeBlockProcessor("ddb-conditions", (src, el, ctx) => renderConditionTracker(el, ctx));
 }
 
 // ─── Master Sheet ────────────────────────────────────────────────────────────
@@ -169,6 +171,11 @@ renderHpTracker(hpEl, ctx);
   renderDefenses(right, ctx);
   renderConsumables(right, ctx);
   renderFeatures(right, ctx);
+
+  const condEl = right.createDiv();
+  condEl.style.cssText = "margin-top:6px";
+  const app2 = (window as any).app as App;
+  renderConditionsBlock(condEl, app2, fm?.name ?? "Character");
 }
 
 // ─── Header ──────────────────────────────────────────────────────────────────
