@@ -31,87 +31,17 @@ jobs:
           ls -lh main.js manifest.json
           echo "Version: $(node -p "require('./package.json').version")"
 
-      - name: Create release
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const tag = `v${require('./package.json').version}`;
-            const sha = context.sha;
-
-            // Create or verify the tag
-            try {
-              await github.rest.git.createRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: `refs/tags/${tag}`,
-                sha,
-              });
-              core.info(`Created tag ${tag}`);
-            } catch (e) {
-              if (e.status === 422) {
-                core.info(`Tag ${tag} already exists — updating to point to ${sha}`);
-                await github.rest.git.updateRef({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  ref: `tags/${tag}`,
-                  sha,
-                  force: true,
-                });
-              } else {
-                throw e;
-              }
-            }
-
-            // Create or update the release
-            let releaseId;
-            try {
-              const rel = await github.rest.repos.createRelease({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag_name: tag,
-                name: tag,
-                generate_release_notes: true,
-              });
-              releaseId = rel.data.id;
-              core.info(`Created release ${tag} (id ${releaseId})`);
-            } catch (e) {
-              if (e.status === 422) {
-                core.info(`Release ${tag} already exists — fetching id`);
-                const rel = await github.rest.repos.getReleaseByTag({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  tag: tag,
-                });
-                releaseId = rel.data.id;
-              } else {
-                throw e;
-              }
-            }
-
-            // Upload assets (delete existing first if re-running)
-            for (const filename of ['main.js', 'manifest.json']) {
-              const data = fs.readFileSync(filename);
-              // Remove old asset with same name if present
-              const assets = await github.rest.repos.listReleaseAssets({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                release_id: releaseId,
-              });
-              const existing = assets.data.find(a => a.name === filename);
-              if (existing) {
-                await github.rest.repos.deleteReleaseAsset({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  asset_id: existing.id,
-                });
-              }
-              await github.rest.repos.uploadReleaseAsset({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                release_id: releaseId,
-                name: filename,
-                data,
-              });
-              core.info(`Uploaded ${filename}`);
-            }
+      - name: Create or update release
+        run: |
+          TAG="v$(node -p "require('./package.json').version")"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG exists — uploading assets"
+            gh release upload "$TAG" main.js manifest.json --clobber
+          else
+            echo "Creating release $TAG"
+            gh release create "$TAG" main.js manifest.json \
+              --title "$TAG" \
+              --generate-notes
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
